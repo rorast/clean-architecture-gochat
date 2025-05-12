@@ -30,20 +30,18 @@ jobs:
 
     - name: Configure Docker
       run: |
-        echo ${{ secrets.GCP_SA_KEY }} | gcloud auth activate-service-account --key-file=-
+        gcloud auth configure-docker
         gcloud config set project ${{ env.PROJECT_ID }}
-        gcloud auth configure-docker gcr.io --quiet
-        gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin gcr.io
 
     - name: Build and Push Application Image
       run: |
-        docker build -t gcr.io/${{ env.PROJECT_ID }}/gochat:latest .
-        docker push gcr.io/${{ env.PROJECT_ID }}/gochat:latest
+        docker build -t gcr.io/${{ env.PROJECT_ID }}/gochat:${{ github.sha }} .
+        docker push gcr.io/${{ env.PROJECT_ID }}/gochat:${{ github.sha }}
 
     - name: Build and Push Migration Image
       run: |
-        docker build -t gcr.io/${{ env.PROJECT_ID }}/gochat-migration:latest -f sql/Dockerfile .
-        docker push gcr.io/${{ env.PROJECT_ID }}/gochat-migration:latest
+        docker build -t gcr.io/${{ env.PROJECT_ID }}/gochat-migration:${{ github.sha }} -f sql/Dockerfile .
+        docker push gcr.io/${{ env.PROJECT_ID }}/gochat-migration:${{ github.sha }}
 
     - name: Get GKE Credentials
       run: |
@@ -52,7 +50,7 @@ jobs:
     - name: Deploy Database Migration
       run: |
         # 更新 migration-job.yaml 中的映像標籤
-        sed -i 's|gcr.io/.*/gochat-migration:.*|gcr.io/${{ env.PROJECT_ID }}/gochat-migration:latest|' k8s/base/migration-job.yaml
+        sed -i 's|gcr.io/.*/gochat-migration:.*|gcr.io/${{ env.PROJECT_ID }}/gochat-migration:${{ github.sha }}|' k8s/base/migration-job.yaml
         # 刪除舊的遷移任務（如果存在）
         kubectl delete job db-migration --ignore-not-found=true
         # 部署新的遷移任務
@@ -63,7 +61,7 @@ jobs:
     - name: Deploy Application
       run: |
         # 更新 deployment.yaml 中的映像標籤
-        sed -i 's|gcr.io/.*/gochat:.*|gcr.io/${{ env.PROJECT_ID }}/gochat:latest|' k8s/base/deployment.yaml
+        sed -i 's|gcr.io/.*/gochat:.*|gcr.io/${{ env.PROJECT_ID }}/gochat:${{ github.sha }}|' k8s/base/deployment.yaml
         # 部署應用
         kubectl apply -f k8s/base/deployment.yaml
         # 等待部署完成
