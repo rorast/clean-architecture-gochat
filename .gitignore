@@ -1,0 +1,35 @@
+# IDE 相關
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 編譯產物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# 依賴目錄
+vendor/
+node_modules/
+
+# 環境配置
+.env
+.env.local
+.env.*.local
+
+# 日誌文件
+*.log
+logs/
+
+# 系統文件
+.DS_Store
+Thumbs.db
+
+# 臨時文件
+tmp/
+temp/ 

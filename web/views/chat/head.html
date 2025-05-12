@@ -1,0 +1,371 @@
+{{define "chat/head.html"}}
+<script>
+    function userId(id){
+        if(typeof  id =="undefined"){
+            var r = sessionStorage.getItem("userid");
+            if(!r){
+                return 0;
+            }else{
+                return parseInt(r)
+            }
+        }else{
+            sessionStorage.setItem("userid",id);
+        }
+    }
+    function userInfo(o){
+        if(typeof  o =="undefined"){
+            var r = sessionStorage.getItem("userinfo");
+            if(!!r){
+                return JSON.parse(r);
+            }else{
+                return null
+            }
+        }else{
+            sessionStorage.setItem("userinfo",JSON.stringify(o));
+        }
+    }
+    var url = location.href;
+    var isOpen = url.indexOf("/login")>-1 || url.indexOf("/register")>-1
+    if (!userId() && !isOpen){
+      // location.href = "login.shtml";
+    }
+
+</script>
+
+    <!--聊天所需-->
+<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>IM解决方案</title>
+<meta name="Description" content="科技Go教育IM通信系統">
+<meta name="Keywords" content="智能售賣機，H5程序，推送，交友，群聊,單聊app">
+<link rel="stylesheet" href="/web/asset/plugins/mui/css/mui.css" />
+<link rel="stylesheet" href="/web/asset/css/chat.css" />
+<link rel="stylesheet" href="/web/asset/css/audio.css" />
+<!--登录所需 -->
+<link rel="stylesheet" href="/web/asset/css/login.css" />
+<link rel="stylesheet" href="/web/asset/iconfont/iconfont.css" />
+<link rel="icon" href="/web/asset/images/favicon.ico" type="image/x-icon"/>
+<!-- 添加 MUI 字體文件 -->
+<style>
+@font-face {
+    font-family: 'Muiicons';
+    src: url('/web/asset/plugins/mui/css/mui.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+.mui-icon {
+    font-family: 'Muiicons';
+    font-size: 24px;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    display: inline-block;
+    text-decoration: none;
+    -webkit-font-smoothing: antialiased;
+}
+</style>
+<script src="/web/asset/plugins/mui/js/mui.js" ></script>
+<script src="/web/asset/js/vue.min.js" ></script>
+<script src="/web/asset/js/vue-resource.min.js" ></script>
+<script src="/web/asset/js/util.js" ></script>
+<script>
+   function post(uri,data,fn){
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST","//"+location.host+"/"+uri, true);
+                // 添加 http 頭，發送信息至服務器時內容碼類型
+                // xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 304)) {
+                        fn.call(this, JSON.parse(xhr.responseText));
+                    }
+                };
+                var _data=[];
+                if(!! userId()){
+                   // data["userid"] = userId();
+                }
+                for(var i in data){
+                    _data.push( i +"=" + encodeURI(data[i]));
+                }
+                xhr.send(_data.join("&"));
+            }
+            function uploadfile(uri, dom, fn) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "//" + location.host + "/" + uri, true);
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 304)) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            console.log('上傳響應：', response);
+                            fn.call(this, response);
+                        } catch (e) {
+                            console.error('解析上傳響應失敗：', e, xhr.responseText);
+                            fn.call(this, { code: -1, message: '解析響應失敗' });
+                        }
+                    }
+                };
+                
+                var formdata = new FormData();
+                
+                // 判斷上傳類型
+                let uploadType = "file";
+                
+                // 檢查dom元素或其父元素的特性判斷上傳類型
+                const parentElement = dom.parentElement;
+                const grandparentElement = parentElement ? parentElement.parentElement : null;
+                
+                try {
+                    if (dom.dataset && dom.dataset.type) {
+                        // 首選：直接從元素的data屬性獲取
+                        uploadType = dom.dataset.type;
+                        console.log('從 data-type 屬性獲取上傳類型:', uploadType);
+                    } else if (dom.getAttribute("onchange") && dom.getAttribute("onchange").includes("uploadUserInfo")) {
+                        // 從onchange屬性判斷用戶頭像
+                        uploadType = "avatar";
+                        console.log('從 onchange 屬性判斷為用戶頭像上傳');
+                    } else if (dom.getAttribute("onchange") && dom.getAttribute("onchange").includes("uploadthis")) {
+                        // 從onchange屬性判斷群頭像
+                        uploadType = "file";
+                        console.log('從 onchange 屬性判斷為群頭像上傳');
+                    } else if (grandparentElement && grandparentElement.querySelector('p')) {
+                        const pText = grandparentElement.querySelector('p').textContent;
+                        if (pText.includes('群頭像')) {
+                            uploadType = "file";
+                            console.log('從頁面結構判斷為群頭像上傳');
+                        } else if (pText.includes('頭像')) {
+                            uploadType = "avatar";
+                            console.log('從頁面結構判斷為用戶頭像上傳');
+                        }
+                    }
+                } catch (e) {
+                    console.error('判斷上傳類型時出錯:', e);
+                }
+                
+                console.log('最終判斷上傳類型:', uploadType);
+                
+                // 確保使用正確的參數名稱：userId 而非 userid
+                if (!!userId()) {
+                    formdata.append("userId", userId());
+                    console.log('上傳用戶ID：', userId());
+                } else {
+                    console.error('無法獲取用戶ID');
+                }
+                
+                // 添加檔案類型
+                formdata.append("type", uploadType);
+                formdata.append("file", dom.files[0]);
+                
+                console.log('上傳文件類型：' + uploadType + '，文件名：', dom.files[0].name);
+                
+                // 不要設置 Content-Type，讓瀏覽器自動設置
+                xhr.send(formdata);
+            }
+   function uploadblob(uri,blob,filetype,fn) {
+       var xhr = new XMLHttpRequest();
+       xhr.open("POST", "//" + location.host + "/" + uri, true);
+       // 添加 http 頭，發送信息至服務器時內容碼類型
+       xhr.onreadystatechange = function () {
+           xhr.onreadystatechange = function () {
+               if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 304)) {
+                   fn.call(this, JSON.parse(xhr.responseText));
+               }
+           };
+           var _data = [];
+           var formdata = new FormData();
+           formdata.append("filetype", filetype);
+           if (!!userId()) {
+               formdata.append("userid", userId());
+           }
+           formdata.append("file", blob)
+           xhr.send(formdata);
+       }
+
+       function uploadaudio(uri, blob, fn) {
+           uploadblob(uri, blob, ".mp3", fn)
+       }
+
+       function uploadvideo(uri, blob, fn) {
+           uploadblob(uri, blob, ".mp4", fn)
+       }
+   }
+</script>
+
+<style>
+    .flex-container{
+        display:flex;
+        flex-direction:row;
+        width:100%;
+        padding-top: 10px;
+        position: fixed;
+        bottom: 0px;
+        background-color: #FFFFFF;
+    }
+    .item-1{
+        height:50px;
+        height:50px;
+        padding: 5px 5px 5px 5px;
+    }
+    .item-2{
+                margin-right:auto;
+        height:50px;
+        width: 100%;
+    }
+    .txt{
+        margin-right:auto;
+    }
+    .item-3{
+        height:50px;
+        height:50px;
+        padding: 5px 5px 5px 5px;
+    }
+    .item-4{
+        height:50px;
+        height:50px;
+        padding: 5px 5px 5px 5px;
+    }
+
+     li.chat{
+         justify-content: flex-start;
+         align-items: flex-start;
+         display: flex;
+
+     }
+     .chat.other{
+         flex-direction: row;
+     }
+    .chat.mine{
+        flex-direction: row-reverse;
+    }
+    img.avatar{
+        width: 54px;
+        height: 54px;
+    }
+    .other .avatar{
+        margin-left:10px;
+    }
+    .mine .avatar{
+        margin-right:10px;
+    }
+    .other span{
+        display: none;
+        border: 10px solid;
+        border-color: transparent #FFFFFF transparent transparent ;
+        margin-top: 10px;
+    }
+    .mine span{
+        display: none;
+        border: 10px solid;
+        border-color: transparent  transparent transparent #32CD32;
+        margin-top: 10px;
+    }
+    .other>.content{
+        background-color: #FFFFFF;
+
+    }
+    .mine>.content{
+        background-color: #e3eafa;
+
+    }
+    div.content{
+        min-width: 60px;
+        clear: both;
+        display: inline-block;
+        padding: 16px 16px 16px 10px;
+        margin: 0 0 20px 0;
+        font: 16px/20px 'Noto Sans', sans-serif;
+        border-radius: 10px;
+
+        min-height: 54px;
+    }
+    .content>img.pic{
+        width: 100%;
+        margin:3px 3px 3px 3px;
+    }
+    .content>img.audio{
+        width: 32px;
+        color: white;
+    }
+    #panels{
+        background-color: #FFFFFF;
+        display: flex;
+        position: fixed;
+        bottom: 50px;
+    }
+    .doutures{
+        flex-direction: row;
+        flex-wrap: wrap;
+        display: flex;
+    }
+    .doutures img{
+        margin: 10px 10px 10px 10px;
+    }
+    .doutupkg{
+        flex-direction: row;
+        flex-wrap: wrap;
+        display: flex;
+    }
+    .plugins{
+        flex-direction: row;
+        flex-wrap: wrap;
+        display: flex;
+    }
+    .plugin{
+        padding: 10px 10px 10px 20px;
+        margin-left: 10px;
+        margin-right: 10px;
+    }
+    .plugin img{
+        width: 40px;
+    }
+    .plugin p{
+        text-align: center;
+        font-size: 16px;
+    }
+    .doutupkg img{
+        width: 32px;
+        height: 32px;
+        margin: 5px 5px 5px 5px;
+    }
+    .upload{
+        width: 64px;
+        height: 64px;
+        position: absolute;
+        top: 1px;
+        opacity:0;
+    }
+    .tagicon{
+        width: 32px;
+        height:32px;
+    }
+    
+    .small{
+        width: 32px;
+        height:32px;
+    }
+    .middle{
+        width: 64px;
+        height:64px;
+    }
+    .large{
+        width: 96px;
+        height:96px;
+    }
+    .res image{
+        width: 32px;
+        height:32px;
+    }
+    .mui-content {
+                padding-top: 44px;
+                position: absolute;
+                left: 0;
+                top: 0;
+                background: #fff;
+                width: 100%;
+                height: 100%;
+        }
+</style>
+{{end}}

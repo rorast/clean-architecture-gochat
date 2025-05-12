@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!--js include-->
+{{template "chat/head.html"}}
+</head>
+<body>
+<!-- 底部選單 -->
+{{template "chat/tabmenu.html"}}
+<header class="mui-bar mui-bar-nav">
+</header>
+<div class="mui-content" id="pageapp">
+    <!--聯係人-->
+    {{template "chat/concat.html"}}
+    <!--群聊-->
+    {{template "chat/group.html"}}
+    <!--個人中心-->
+    {{template "chat/profile.html"}}
+    <!--聊天主界面-->
+    {{template "chat/main.html"}}
+    <!--創建群主界面-->
+    {{template "chat/createcom.html"}}
+    <!--修改信息主界面-->
+    {{template "chat/userinfo.html"}}
+</div>
+</body>
+</html>
+{{template "chat/foot.html"}}
+
+<script>
+// 統一的檔案上傳處理函數
+function uploadFile(file, options = {}) {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // 設置上傳類型，預設為 file
+        const uploadType = options.type || 'file';
+        formData.append('type', uploadType);
+        
+        // 如果是頭像上傳，添加用戶ID
+        if (uploadType === 'avatar' && options.userId) {
+            formData.append('userId', options.userId);
+        }
+
+        // 添加日誌輸出
+        console.log('準備上傳檔案：', {
+            type: uploadType,
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type
+        });
+
+        // 檢查 FormData 內容
+        for (let pair of formData.entries()) {
+            console.log('FormData 內容：', pair[0], pair[1]);
+        }
+
+        return fetch('/attach/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(async response => {
+            const responseText = await response.text();
+            console.log('伺服器回應：', responseText);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+            }
+            
+            try {
+                return JSON.parse(responseText);
+            } catch (e) {
+                console.error('解析 JSON 失敗：', e);
+                throw new Error('伺服器回應格式錯誤');
+            }
+        })
+        .then(data => {
+            console.log('上傳回應：', data);
+            if (data.code === 200) {
+                // 根據不同類型處理成功回調
+                if (options.onSuccess) {
+                    options.onSuccess(data.data);
+                } else {
+                    // 預設處理：發送文件消息
+                    const message = {
+                        content: data.data.file_url,
+                        type: 'file',
+                        fileName: data.data.file_name
+                    };
+                    sendMessage(message);
+                }
+            } else {
+                // 錯誤處理
+                const errorMsg = data.message || '上傳失敗';
+                console.error('上傳失敗：', errorMsg);
+                if (options.onError) {
+                    options.onError(errorMsg);
+                } else {
+                    alert('上傳失敗：' + errorMsg);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('上傳錯誤：', error);
+            if (options.onError) {
+                options.onError(error.message || '上傳失敗，請重試');
+            } else {
+                alert('上傳失敗：' + (error.message || '請重試'));
+            }
+        });
+    } catch (error) {
+        console.error('檔案上傳初始化錯誤：', error);
+        if (options.onError) {
+            options.onError('檔案上傳初始化失敗：' + error.message);
+        } else {
+            alert('檔案上傳初始化失敗：' + error.message);
+        }
+    }
+}
+
+// 檔案選擇處理函數
+function handleFileSelect(event) {
+    try {
+        const file = event.target.files[0];
+        if (!file) {
+            console.log('未選擇檔案');
+            return;
+        }
+
+        console.log('選擇的檔案：', {
+            name: file.name,
+            type: file.type,
+            size: file.size
+        });
+
+        // 根據檔案類型決定上傳方式
+        if (file.type.startsWith('image/')) {
+            // 如果是圖片，使用頭像上傳
+            const userId = getCurrentUserId(); // 需要實現這個函數
+            if (!userId) {
+                alert('無法獲取用戶ID');
+                return;
+            }
+            uploadAvatar(file, userId);
+        } else {
+            // 其他檔案使用一般上傳
+            uploadGeneralFile(file);
+        }
+    } catch (error) {
+        console.error('檔案選擇處理錯誤：', error);
+        alert('檔案選擇處理失敗：' + error.message);
+    }
+}
+
+// 獲取當前用戶ID
+function getCurrentUserId() {
+    // 從 URL 參數中獲取用戶ID
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('userId');
+}
+
+// 上傳頭像的便捷方法
+function uploadAvatar(file, userId) {
+    console.log('準備上傳頭像：', { fileName: file.name, userId: userId });
+    uploadFile(file, {
+        type: 'avatar',
+        userId: userId,
+        onSuccess: (data) => {
+            console.log('頭像上傳成功：', data);
+            // 更新頭像顯示
+            const avatarElement = document.getElementById('userAvatar');
+            if (avatarElement) {
+                avatarElement.src = data.file_url;
+            }
+        },
+        onError: (message) => {
+            console.error('頭像上傳失敗：', message);
+            alert('頭像上傳失敗：' + message);
+        }
+    });
+}
+
+// 上傳一般檔案的便捷方法
+function uploadGeneralFile(file) {
+    console.log('準備上傳一般檔案：', { fileName: file.name });
+    uploadFile(file, {
+        type: 'file',
+        onSuccess: (data) => {
+            console.log('檔案上傳成功：', data);
+            const message = {
+                content: data.file_url,
+                type: 'file',
+                fileName: data.file_name
+            };
+            sendMessage(message);
+        },
+        onError: (message) => {
+            console.error('檔案上傳失敗：', message);
+            alert('檔案上傳失敗：' + message);
+        }
+    });
+}
+
+// 初始化檔案上傳按鈕
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // 添加檔案上傳按鈕到聊天工具欄
+        const toolbar = document.querySelector('.chat-toolbar');
+        if (toolbar) {
+            const uploadButton = document.createElement('button');
+            uploadButton.innerHTML = '<i class="mui-icon mui-icon-paperplane"></i>';
+            uploadButton.onclick = function() {
+                document.getElementById('fileInput').click();
+            };
+            toolbar.appendChild(uploadButton);
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.id = 'fileInput';
+            fileInput.style.display = 'none';
+            fileInput.onchange = handleFileSelect;
+            document.body.appendChild(fileInput);
+        }
+    } catch (error) {
+        console.error('初始化檔案上傳按鈕失敗：', error);
+    }
+});
+</script>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用戶資料</title>
+    <link rel="stylesheet" href="/web/asset/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="profile-container">
+            <h2>用戶資料</h2>
+            <div class="avatar-section">
+                <img id="avatar-preview" src="{{.User.Avatar}}" alt="用戶頭像" class="avatar">
+                <form id="avatar-form" enctype="multipart/form-data">
+                    <input type="file" id="avatar-input" name="avatar" accept="image/jpeg,image/png" style="display: none;">
+                    <input type="hidden" name="userId" value="{{.User.ID}}">
+                    <button type="button" onclick="document.getElementById('avatar-input').click()">更換頭像</button>
+                </form>
+            </div>
+            <div class="user-info">
+                <p>用戶名：{{.User.Username}}</p>
+                <p>電子郵件：{{.User.Email}}</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('avatar-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 驗證文件類型
+            if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                alert('只支持 JPG、PNG 格式的圖片');
+                return;
+            }
+
+            // 驗證文件大小
+            if (file.size > 2 * 1024 * 1024) {
+                alert('文件大小不能超過 2MB');
+                return;
+            }
+
+            // 預覽圖片
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('avatar-preview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // 上傳文件
+            const formData = new FormData(document.getElementById('avatar-form'));
+            fetch('/user/avatar/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.code === 200) {
+                    alert('頭像更新成功');
+                } else {
+                    alert('頭像更新失敗：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('上傳失敗，請稍後重試');
+            });
+        });
+    </script>
+
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .profile-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .avatar-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            margin-top: 20px;
+        }
+
+        .user-info p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</body>
+</html> 

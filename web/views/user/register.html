@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    {{template "chat/head.html"}}
+    <meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>IM解决方案</title>
+    <link rel="stylesheet" href="/web/asset/plugins/mui/css/mui.css" />
+    <link rel="stylesheet" href="/web/asset/css/login.css" />
+    <link rel="icon" href="/web/asset/images/favicon.ico" type="image/x-icon" />
+    <script src="/web/asset/plugins/mui/js/mui.js"></script>
+    <script src="/web/asset/js/vue.min.js"></script>
+    <script src="/web/asset/js/util.js"></script>
+</head>
+
+<body>
+
+    <header class="mui-bar mui-bar-nav">
+        <h1 class="mui-title">注冊</h1>
+    </header>
+    <div class="mui-content register-page" id="pageapp">
+        <div class="mui-input-group register-form">
+            <div class="mui-input-row">
+                <input v-model="user.name" placeholder="請輸入用戶名" type="text" class="mui-input-clear mui-input" required>
+            </div>
+            <div class="mui-input-row">
+                <input v-model="user.password" placeholder="請輸入密碼" type="password" class="mui-input-clear mui-input" required>
+            </div>
+            <div class="mui-input-row">
+                <input v-model="user.repassword" placeholder="再輸入密碼" type="password" class="mui-input-clear mui-input" required>
+            </div>
+        </div>
+        <div class="mui-content-padded">
+            <button @click="login" type="button" class="mui-btn mui-btn-block mui-btn-primary btn-register">注冊</button>
+            <div class="link-area"><a id='reg' href="/">登錄帳號</a> <span class="spliter">|</span> <a
+                    id='forgetPassword'>忘記密碼</a>
+            </div>
+        </div>
+        <div class="mui-content-padded oauth-area">
+        </div>
+    </div>
+</body>
+
+</html>
+<script>
+    var app = new Vue({
+        el: "#pageapp",
+        data: function () {
+            return {
+                user: {
+                    name: "",
+                    password: "",
+                    repassword: "",
+                }
+            }
+        },
+        methods: {
+            login: function () {
+                // 檢查所有欄位是否為空
+                if (!this.user.name.trim()) {
+                    mui.toast("用戶名不能為空");
+                    return;
+                }
+                
+                if (!this.user.password) {
+                    mui.toast("密碼不能為空");
+                    return;
+                }
+                
+                if (!this.user.repassword) {
+                    mui.toast("確認密碼不能為空");
+                    return;
+                }
+                
+                // 檢查密碼是否匹配
+                if (this.user.password !== this.user.repassword) {
+                    mui.toast("兩次輸入的密碼不一致");
+                    return;
+                }
+                
+                // 檢查密碼長度
+                if (this.user.password.length < 6) {
+                    mui.toast("密碼長度不能少於6個字符");
+                    return;
+                }
+                
+                // 準備要發送的數據
+                const userData = {
+                    name: this.user.name.trim(),
+                    password: this.user.password
+                };
+                
+                // 詳細輸出請求數據
+                console.log("提交註冊數據:", userData);
+                console.log("JSON 字符串:", JSON.stringify(userData));
+                
+                // 使用標準 fetch API
+                fetch("/user/create", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify(userData)
+                })
+                .then(response => {
+                    console.log("響應狀態:", response.status);
+                    return response.json();
+                })
+                .then(res => {
+                    console.log("註冊響應:", res);
+                    if (res.code != 0) {
+                        mui.toast(res.message || "註冊失敗");
+                    } else {
+                        mui.toast("註冊成功，即將跳轉");
+                        // 確保從響應中正確獲取用戶ID和Identity
+                        if (res.data && res.data.id && res.data.identity) {
+                            var url = "/toChat?userId=" + res.data.id + "&token=" + res.data.identity;
+                            // 正確設置用戶信息
+                            localStorage.setItem('userInfo', JSON.stringify({
+                                id: res.data.id,
+                                identity: res.data.identity
+                            }));
+                            console.log("註冊成功，跳轉到:", url);
+                            location.href = url;
+                        } else {
+                            console.error("註冊響應數據格式錯誤:", res.data);
+                            mui.toast("註冊成功，但數據格式錯誤");
+                            location.href = "/";
+                        }
+                    }
+                })
+                .catch(function(error) {
+                    console.error("註冊請求失敗:", error);
+                    mui.toast("註冊請求失敗，請稍後再試");
+                });
+            },
+        }
+    })
+</script>

@@ -1,0 +1,9 @@
+basePath: /
+host: localhost:8080
+info:
+  contact: {}
+  description: This is a chat application API using Clean Architecture
+  title: Clean Architecture Chat API
+  version: "1.0"
+paths: {}
+swagger: "2.0"

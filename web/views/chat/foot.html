@@ -1,0 +1,1400 @@
+{{define "chat/foot.html"}}
+<script>
+
+    function upload(dom) {
+        if (!dom.files || !dom.files[0]) {
+            mui.toast('請選擇圖片');
+            return;
+        }
+
+        const file = dom.files[0];
+        console.log('準備上傳的文件：', {
+            name: file.name,
+            type: file.type,
+            size: file.size
+        });
+
+        const validTypes = ['image/gif', 'image/jpeg', 'image/png'];
+        if (!validTypes.includes(file.type)) {
+            mui.toast('只支持 GIF、JPEG、PNG 格式的圖片');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            mui.toast('圖片大小不能超過 5MB');
+            return;
+        }
+
+        app.panelstat = 'kbord';
+
+        uploadfile("attach/upload", dom, function (res) {
+            console.log('上傳響應完整數據：', JSON.stringify(res, null, 2));
+            if (res.Code == 0 || res.code == 200) {
+                if (!app.isSending) {
+                    app.isSending = true;
+                    // 正確獲取圖片 URL
+                    const imageUrl = res.data && res.data.file_url ? res.data.file_url : 
+                                   res.Data && res.Data.file_url ? res.Data.file_url : null;
+                    
+                    if (!imageUrl) {
+                        console.error('無法獲取圖片URL，完整響應：', JSON.stringify(res, null, 2));
+                        mui.toast('上傳失敗：無法獲取圖片URL');
+                        app.isSending = false;
+                        return;
+                    }
+                    
+                    console.log('圖片上傳成功，完整路徑：', {
+                        originalUrl: imageUrl,
+                        fullUrl: window.location.origin + imageUrl,
+                        fileName: imageUrl.split('/').pop()
+                    });
+                    
+                    app.sendpicmsg(imageUrl);
+                    
+                    setTimeout(() => {
+                        app.isSending = false;
+                    }, 1000);
+                }
+            } else {
+                const errorMsg = res.message || res.Msg || '上傳失敗';
+                console.error('上傳失敗：', errorMsg, '完整響應：', JSON.stringify(res, null, 2));
+                mui.toast(errorMsg);
+            }
+        });
+    }
+    // 上傳圖片 創建群
+    function uploadthis(dom) {
+        // 確認是否有用戶ID
+        const currentUserId = userId();
+        if (!currentUserId) {
+            console.error('上傳群頭像失敗：未登入或無法獲取用戶ID');
+            alert('請先登入後再上傳群頭像');
+            return;
+        }
+        
+        console.log('上傳群頭像，擁有者ID:', currentUserId);
+        
+        // 使用修改後的 uploadfile 函數，傳入正確的參數
+        uploadfile("attach/upload", dom, function (res) {
+            console.log('群頭像上傳響應：', res);
+            // 檢查響應格式，支持兩種成功狀態：Code=0 或 code=200
+            if (res.Code == 0 || res.code == 200) {
+                // 確定回應數據位置
+                const responseData = res.Data || res.data || {};
+                // 獲取文件URL
+                const fileUrl = typeof responseData === 'string' ? responseData : (responseData.file_url || '');
+                
+                if (!fileUrl) {
+                    console.error('群頭像URL為空');
+                    alert('群頭像上傳失敗：無法獲取URL');
+                    return;
+                }
+                
+                console.log('群頭像上傳成功，URL：', fileUrl);
+                
+                // 更新群頭像
+                app.com.icon = fileUrl;
+                
+                // 更新頁面上的群頭像元素
+                const iconElement = document.getElementById('icon');
+                if (iconElement) {
+                    iconElement.src = fileUrl;
+                }
+                
+                console.log('群頭像更新成功：', fileUrl);
+                // 通知用戶
+                mui.toast('群頭像上傳成功');
+            } else {
+                const errorMsg = res.message || res.Msg || '未知錯誤';
+                console.error('群頭像上傳失敗：', errorMsg, res);
+                alert('群頭像上傳失敗：' + errorMsg);
+            }
+        });
+    }
+    // 維護用戶頭像
+    function uploadUserInfo(dom) {
+        // 確認是否有用戶ID
+        const currentUserId = userId();
+        if (!currentUserId) {
+            console.error('上傳頭像失敗：未登入或無法獲取用戶ID');
+            alert('請先登入後再上傳頭像');
+            return;
+        }
+        
+        console.log('上傳頭像，用戶ID:', currentUserId);
+        
+        uploadfile("attach/upload", dom, function (res) {
+            console.log('頭像上傳響應：', res);
+            // 檢查響應格式，支持兩種成功狀態：Code=0 或 code=200
+            if (res.Code == 0 || res.code == 200) {
+                // 確定回應數據位置
+                const responseData = res.Data || res.data || {};
+                // 獲取文件URL
+                const fileUrl = typeof responseData === 'string' ? responseData : (responseData.file_url || '');
+                
+                if (!fileUrl) {
+                    console.error('頭像URL為空');
+                    alert('頭像上傳失敗：無法獲取URL');
+                    return;
+                }
+                
+                console.log('頭像上傳成功，URL：', fileUrl);
+                
+                // 更新所有相關的頭像顯示
+                app.info.icon = fileUrl;
+                app.profile.avatar = fileUrl;
+                
+                // 更新 sessionStorage 中的用戶信息
+                let userInfo = JSON.parse(sessionStorage.getItem('userinfo') || '{}');
+                userInfo.Avatar = fileUrl;
+                sessionStorage.setItem('userinfo', JSON.stringify(userInfo));
+                
+                // 更新頁面上的所有頭像元素
+                const avatarElements = document.querySelectorAll('img[src*="avatar"]');
+                avatarElements.forEach(element => {
+                    if (element.id === 'userAvatar' || element.classList.contains('avatar')) {
+                        element.src = fileUrl;
+                    }
+                });
+                
+                console.log('頭像更新成功：', fileUrl);
+                // 通知用戶
+                mui.toast('頭像更新成功');
+            } else {
+                const errorMsg = res.message || res.Msg || '未知錯誤';
+                console.error('頭像上傳失敗：', errorMsg, res);
+                alert('頭像上傳失敗：' + errorMsg);
+            }
+        });
+    }
+
+
+
+    function userId() {
+        const id = parseInt(util.parseQuery("userId"));
+        console.log('🎯 用戶id：', id);
+        return id;
+    }
+    var app = new Vue(
+        {
+            el: "#pageapp",
+            data: {
+                usermap: {},
+                friends: [],
+                communitys: [],
+                profile: {
+                    avatar: "",
+                    nickname: "",
+                    memo: "",
+                },
+                webSocket: null,
+                win: "main",
+                com: {
+                    "ownerId": "",
+                    "icon": "",
+                    "cate": "",
+                    "name": "",
+                    "memo": "",
+                    "size": "0",
+                    "joinType": "0"
+                },
+                //用户信息
+                info: {
+                    "id": "",
+                    "icon": "",
+                    "name": "",
+                },
+                isDisable: true,
+                isLoadMore: false,
+                start: 0,
+                end: 9,
+                txtmsg: "",
+                panelstat: "kbord",
+                txtstat: "kbord",
+                title: "",
+                otherAvatar: '',
+                doutu: {
+                    config: {
+                        "baseurl": "web/asset/plugins/doutu",
+                        "pkgids": ["mkgif", "emoj"]
+                    },
+                    packages: [],
+                    choosed: { "pkgid": "emoj", "assets": [], "size": "small" }
+                },
+                msglist: [],
+                isReadRedisMsg: [],  //是否已读取某个用户的缓存消息
+                msgcontext: {
+                    TargetId: -1,
+                    Type: -1,
+                    CreateTime: new Date().getTime(),
+                    userId: userId()
+                },
+                plugins: [
+                    {
+                        icon: "icon-tupian",
+                        name: "照片",
+                        id: "upload",
+                        slot: "<input accept=\"image/gif,image/jpeg,image/png\" type=\"file\" onchange=\"upload(this)\" class='upload' />"
+                    },
+                    {
+                        icon: "icon-paizhao",
+                        name: "拍照",
+                        id: "camera",
+                        slot: "<input accept=\"image/*\" capture=\"camera\" type=\"file\" onchange=\"upload(this)\" class='upload' />"
+                    },
+                    {
+                        icon: "icon-emoji",
+                        name: "表情",
+                        id: "emoji",
+                        slot: "<div onclick=\"showEmojiPicker()\" class='emoji-btn'></div>"
+                    },
+                    {
+                        icon: "icon-yuyin",
+                        name: "語音",
+                        id: "audiocall"
+                    },
+                    {
+                        icon: "icon-shipin",
+                        name: "視頻",
+                        id: "videocall"
+                    },
+                    {
+                        icon: "icon-hongbao",
+                        name: "紅包",
+                        id: "redpackage"
+                    },
+                    {
+                        icon: "icon-zhuanzhang",
+                        name: "轉帳",
+                        id: "exchange"
+                    },
+                    {
+                        icon: "icon-daohangdizhi",
+                        name: "地址",
+                        id: "address"
+                    },
+                    {
+                        icon: "icon-zhanghu",
+                        name: "名片",
+                        id: "person"
+                    }
+                ],
+                timer: 0,
+                recorder: {},
+                allChunks: [],
+                iscomplete: false,
+                duration: 0,
+                showprocess: false,
+                reconnectAttempts: 0,
+                maxReconnectAttempts: 5,
+                messageQueue: [],
+                isConnecting: false,
+                processedMessages: {},
+                isSending: false,  // 添加發送狀態標記
+            },
+            created: function () {
+                this.loadfriends();
+                this.loadcommunitys();
+                this.loaddoutures();
+                setInterval(this.heartbeat, 10 * 1000);
+                var user = userInfo()
+                // 初始化 websocket
+                this.initwebsocket()
+                this.initUser();
+
+            },
+            mounted: function () {
+
+            },
+            methods: {
+                handleAvatarError(e) {
+                    console.warn('頭像載入失數，使用預設頭像');
+                    e.target.src = '/web/asset/images/avatar0.png';
+                },
+                initUser() {
+                    let userInfo = JSON.parse(sessionStorage.getItem('userinfo') || '{}');
+                    // 確保頭像 URL 正確
+                    let avatarUrl = userInfo.Avatar;
+                    if (avatarUrl && !avatarUrl.startsWith('http') && !avatarUrl.startsWith('/')) {
+                        avatarUrl = '/web/asset/images/' + avatarUrl;
+                    }
+                    
+                    this.info.icon = avatarUrl;
+                    this.info.name = userInfo.Name;
+                    this.info.id = userInfo.ID;
+                    this.profile.avatar = avatarUrl;
+                    this.profile.nickname = userInfo.Name;
+                    
+                    console.log('初始化用戶信息：', {
+                        icon: this.info.icon,
+                        avatar: this.profile.avatar,
+                        name: this.info.name
+                    });
+                },
+                playaudio: function (url) {
+                    document.getElementById('audio4play').src = url;
+                    document.getElementById('audio4play').play();
+                },
+                startrecorder: function () {
+                    let audioTarget = document.getElementById('audio');
+                    var types = ["video/webm",
+                        "audio/webm",
+                        "video/webm\;codecs=vp8",
+                        "video/webm\;codecs=daala",
+                        "video/webm\;codecs=h264",
+                        "audio/webm\;codecs=opus",
+                        "video/mpeg"];
+                    var suporttype = "";
+                    for (var i in types) {
+                        if (MediaRecorder.isTypeSupported(types[i])) {
+                            suporttype = types[i];
+                        }
+                    }
+                    if (!suporttype) {
+                        mui.toast("編碼不支持")
+                        return;
+                    }
+
+                    this.duration = new Date().getTime();
+                    //video 攝像頭   ，audio 音頻
+                    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                        .then(function (stream) {
+                            this.showprocess = true
+                            this.recorder = new MediaRecorder(stream);
+                            audioTarget.srcObject = stream;
+                            // 是否可用
+                            this.recorder.ondataavailable = (event) => {
+                                console.log("ondataavailable");
+                                uploadblob("attach/upload", event.data, ".mp3", res => {
+                                    var duration = Math.ceil((new Date().getTime() - this.duration) / 1000);
+                                    this.sendaudiomsg(res.Data, duration);
+                                })
+                                stream.getTracks().forEach(function (track) {
+                                    track.stop();
+                                });
+                                this.showprocess = false
+                            }
+                            this.recorder.start();
+                        }.bind(this)).
+                        catch(function (err) {
+                            console.log(err)
+                            mui.toast(err)
+                            this.showprocess = false
+                        }.bind(this));
+                },
+                stoprecorder: function () {
+                    if (typeof this.recorder.stop == "function") {
+                        this.recorder.stop();
+                    }
+                    this.showprocess = false
+                    console.log("stoprecorder")
+
+                },
+                dispatchplugin: function (item) {
+                    switch (item.id) {
+                        case "upload":
+                        case "camera":
+
+                            break;
+                        default:
+                            mui.toast("系統暫不支持，請自行擴展")
+                    }
+                },
+                reset: function () {
+                    this.panelstat = "kbord";
+                    this.txtstat = "kbord";
+                    this.txtmsg = "";
+                },
+                createmsgcontext: function () {
+                    return {
+                        TargetId: this.msgcontext.TargetId,
+                        Type: this.msgcontext.Type,
+                        CreateTime: new Date().getTime(),
+                        userId: userId(),
+                        Media: 1, // 默認文字類型
+                        Content: "",
+                        Url: "",
+                        Amount: 0
+                    };
+                },
+                loaddoutures: function () {
+                    var res = [];
+                    var config = this.doutu.config;
+                    for (var i in config.pkgids) {
+                        res[config.pkgids[i]] = (config.baseurl + "/" + config.pkgids[i] + "/info.json")
+                    }
+                    var that = this;
+                    for (var id in res) {
+                        this.$http.get(res[id]).then(response => {
+                            pkginfo = response.data
+                            var baseurl = config.baseurl + "/" + pkginfo.id + "/"
+                            // console.log("post res[i]",id,res[id],pkginfo)
+                            for (var j in pkginfo.assets) {
+                                pkginfo.assets[j] = baseurl + pkginfo.assets[j];
+                            }
+                            pkginfo.icon = baseurl + pkginfo.icon;
+                            that.doutu.packages.push(pkginfo)
+                            if (that.doutu.choosed.pkgid == pkginfo.id) {
+                                that.doutu.choosed.assets = pkginfo.assets;
+                            }
+
+                        })
+                    }
+                },
+                showweixin: function () {
+                    mui.alert("請加微信號xxx索取")
+                },
+                showmsg: function (user, msg, isReverse, isFirst) {
+                    console.log('顯示消息：', {
+                        user: user,
+                        msg: msg,
+                        isReverse: isReverse,
+                        isFirst: isFirst
+                    });
+
+                    var data = {
+                        ismine: userId() == msg.userId,
+                        user: user,
+                        msg: msg
+                    }
+                    
+                    if (isReverse) {
+                        this.msglist = [data].concat(this.msglist);
+                    } else {
+                        if (isFirst) {
+                            this.msglist = [data].concat(this.msglist);
+                        } else {
+                            this.msglist = this.msglist.concat(data)
+                        }
+                    }
+                    
+                    if (!isReverse) {
+                        this.panelstat = "kbord";
+                    }
+                    
+                    var that = this;
+                    that.timer = setTimeout(function () {
+                        window.scrollTo(0, document.getElementById("convo").offsetHeight);
+                        if (!isReverse) {
+                            let scroll = document.querySelector("#convo .mui-scroll-wrapper").offsetHeight;
+                            let inner = document.querySelector("#convo .mui-scroll").offsetHeight;
+                            let y = scroll - inner - 80;
+                            let transform = document.querySelector("#convo .mui-scroll").style.transform;
+                            document.querySelector("#convo .mui-scroll").style.transform = 'translateY(' + y + 'px)';
+                        } else {
+                            document.querySelector("#convo .mui-scroll").style.transform = 'translateY(' + 0 + 'px)';
+                        }
+                        clearTimeout(that.timer)
+                    }, 100)
+                },
+                startrecord: function () {
+
+                },
+                // 跟誰單聊
+                sendtxtmsg: function (txt) {
+                    if (!txt.trim()) return;
+                    
+                    // 檢查是否有目標用戶
+                    if (!this.msgcontext.TargetId || this.msgcontext.TargetId <= 0) {
+                        console.error("請先選擇聊天對象", this.msgcontext);
+                        mui.toast("請先選擇聊天對象");
+                        return;
+                    }
+
+                    console.log("發送消息，上下文:", this.msgcontext);
+                    
+                    var msg = this.createmsgcontext();
+                    msg.Content = txt;
+                    msg.Media = 1; // 文字類型
+                    msg.TargetId = this.msgcontext.TargetId; // 確保設置目標ID
+                    msg.Type = this.msgcontext.Type; // 確保設置消息類型
+                    
+                    console.log("準備發送的消息:", msg);
+                    
+                    // 先顯示消息
+                    this.showmsg(userInfo(), msg);
+                    
+                    // 清空輸入框
+                    this.txtmsg = "";
+                    
+                    // 發送到服務器
+                    this.sendMessageToServer(msg);
+                },
+                sendpicmsg: function (url) {
+                    if (this.isSending) {
+                        return;
+                    }
+                    this.isSending = true;
+
+                    if (!this.msgcontext.TargetId || this.msgcontext.TargetId <= 0) {
+                        console.error("請先選擇聊天對象", this.msgcontext);
+                        mui.toast("請先選擇聊天對象");
+                        this.isSending = false;
+                        return;
+                    }
+
+                    console.log('準備發送圖片消息：', {
+                        url: url,
+                        fullUrl: window.location.origin + url,
+                        fileName: url.split('/').pop(),
+                        targetId: this.msgcontext.TargetId,
+                        type: this.msgcontext.Type
+                    });
+
+                    var msg = this.createmsgcontext();
+                    msg.Url = url;
+                    msg.Media = 4;
+                    msg.TargetId = this.msgcontext.TargetId;
+                    msg.Type = this.msgcontext.Type;
+                    msg.id = new Date().getTime() + '_' + Math.random().toString(36).substr(2, 9);
+                    
+                    console.log('創建的消息對象：', {
+                        ...msg,
+                        fullImageUrl: window.location.origin + msg.Url
+                    });
+                    
+                    this.showmsg(userInfo(), msg);
+                    
+                    if (!this.processedMessages) {
+                        this.processedMessages = {};
+                    }
+                    this.processedMessages[msg.id] = true;
+                    
+                    this.sendMessageToServer(msg);
+
+                    setTimeout(() => {
+                        this.isSending = false;
+                    }, 1000);
+                },
+                sendaudiomsg: function (url, duration) {
+                    var msg = this.createmsgcontext();
+                    msg.Url = url;
+                    msg.Media = 3; // 語音類型
+                    msg.Amount = duration;
+                    
+                    // 先顯示消息
+                    this.showmsg(userInfo(), msg);
+                    
+                    // 發送到服務器
+                    this.sendMessageToServer(msg);
+                },
+                scrollConcat() {
+                    console.log(123)
+                },
+                closePanel() {
+                    this.panelstat = 'kbord';
+                },
+                singlemsg: function (user) {
+                    // 檢查用戶對象是否有效
+                    if (!user) {
+                        console.error("用戶對象為空");
+                        mui.toast("無法獲取用戶信息");
+                        return;
+                    }
+
+                    // 檢查必要的用戶屬性
+                    if (!user.ID && !user.id) {
+                        console.error("用戶ID無效:", user);
+                        mui.toast("用戶ID無效");
+                        return;
+                    }
+
+                    // 統一使用 ID 屬性
+                    const userId = user.ID || user.id;
+                    const userName = user.name || user.Name;
+                    const userAvatar = user.Avatar || user.avatar;
+
+                    // 確保頭像URL正確
+                    let avatarUrl = userAvatar;
+                    if (avatarUrl && !avatarUrl.startsWith("http") && !avatarUrl.startsWith("/")) {
+                        avatarUrl = "/web/asset/images/" + avatarUrl;
+                    }
+
+                    console.log("開始聊天，用戶信息:", {
+                        id: userId,
+                        name: userName,
+                        avatar: avatarUrl
+                    });
+                    
+                    if (this.isDisable) {
+                        this.setTimeFlag();
+                        this.win = "single";
+                        this.title = "和【" + userName + "】聊天中";
+                        this.otherAvatar = avatarUrl || "/web/asset/images/avatar0.png";
+                        
+                        // 確保正確設置目標ID和類型
+                        const targetId = parseInt(userId);
+                        if (isNaN(targetId)) {
+                            console.error("用戶ID無效:", userId);
+                            mui.toast("用戶ID無效");
+                            return;
+                        }
+                        
+                        // 重置消息列表
+                        this.msglist = [];
+                        this.currentPage = 1;
+                        
+                        this.msgcontext.TargetId = targetId;
+                        this.msgcontext.Type = 1; // 私聊類型
+                        
+                        console.log("設置聊天上下文:", this.msgcontext);
+                        
+                        // 加載聊天歷史
+                        this.loadChatHistory(this.msgcontext.userId, this.msgcontext.TargetId);
+                        
+                        // 使用 Vue 的 nextTick 確保 DOM 已更新
+                        this.$nextTick(() => {
+                            // 設置滾動
+                            const scrollWrapper = document.querySelector('.mui-scroll-wrapper');
+                            if (scrollWrapper) {
+                                mui(scrollWrapper).scroll({
+                                    scrollY: true,
+                                    scrollX: false,
+                                    startX: 0,
+                                    startY: 0,
+                                    indicators: true,
+                                    deceleration: 0.0006,
+                                    bounce: true
+                                });
+
+                                // 監聽滾動事件
+                                const scrollElement = scrollWrapper.querySelector('.mui-scroll');
+                                if (scrollElement) {
+                                    scrollElement.addEventListener('scroll', (e) => {
+                                        const target = e.currentTarget;
+                                        if (!target || !target.style) {
+                                            return;
+                                        }
+
+                                        const transform = target.style.transform;
+                                        if (!transform) {
+                                            return;
+                                        }
+
+                                        const translate = transform.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
+                                        if (translate && translate.length > 1) {
+                                            const y = parseInt(translate[1]);
+                                            if (y > 0 && this.isLoadMore == false) {
+                                                this.isLoadMore = true;
+                                                // 加載更多歷史消息
+                                                this.loadMoreHistory(this.msgcontext.userId, this.msgcontext.TargetId);
+                                                
+                                                setTimeout(() => {
+                                                    this.isLoadMore = false;
+                                                }, 300);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                },
+                // 群聊的初始化
+                groupmsg: function (group) {
+                    if (this.isDisable) {
+                        this.setTimeFlag()
+                        this.win = "group";
+                        this.title = group.name;
+                        this.msgcontext.TargetId = parseInt(group.id);
+                        this.msgcontext.Type = 2;
+                    }
+                },
+                loaduserinfo: function (userid, cb) {
+                    if (!userid) {
+                        console.error("用戶ID無效");
+                        return;
+                    }
+                    
+                    userid = "" + userid;
+                    var userinfo = this.usermap[userid];
+                    
+                    if (!userinfo) {
+                        // 只在首次加載時輸出日誌
+                        console.log("首次加載用戶信息:", userid);
+                        
+                        fetch("/user/find", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${util.parseQuery("token")}`
+                            },
+                            body: JSON.stringify({ userId: parseInt(userid) })
+                        })
+                        .then(res => {
+                            if (!res.ok) {
+                                throw new Error(`HTTP error! status: ${res.status}`);
+                            }
+                            return res.json();
+                        })
+                        .then(res => {
+                            if (res.code === 0 && res.data) {
+                                // 確保頭像URL正確
+                                if (res.data.Avatar && !res.data.Avatar.startsWith("http")) {
+                                    res.data.Avatar = "/web/asset/images/" + res.data.Avatar;
+                                }
+                                this.usermap[userid] = res.data;
+                                cb(res.data);
+                            } else {
+                                console.error("獲取用戶信息失敗:", res.message);
+                                // 使用預設頭像
+                                const defaultUser = {
+                                    ID: parseInt(userid),
+                                    Name: "未知用戶",
+                                    Avatar: "/web/asset/images/avatar0.png"
+                                };
+                                this.usermap[userid] = defaultUser;
+                                cb(defaultUser);
+                            }
+                        })
+                        .catch(err => {
+                            console.error("加載用戶信息失敗:", err);
+                            // 使用預設頭像
+                            const defaultUser = {
+                                ID: parseInt(userid),
+                                Name: "未知用戶",
+                                Avatar: "/web/asset/images/avatar0.png"
+                            };
+                            this.usermap[userid] = defaultUser;
+                            cb(defaultUser);
+                        });
+                    } else {
+                        // 使用緩存時不輸出日誌
+                        cb(userinfo);
+                    }
+                },
+                onmessage: function (data) {
+                    // 檢查是否為心跳消息
+                    if (data.Media === -1 && data.Type === 3) {
+                        return;
+                    }
+
+                    // 檢查是否已經處理過這條消息
+                    if (this.processedMessages && this.processedMessages[data.id]) {
+                        return;
+                    }
+
+                    // 標記消息為已處理
+                    if (!this.processedMessages) {
+                        this.processedMessages = {};
+                    }
+                    this.processedMessages[data.id] = true;
+
+                    // 如果是自己的消息，直接返回（因為已經在發送時顯示過了）
+                    if (data.userId === userId()) {
+                        return;
+                    }
+
+                    // 處理對方的消息
+                    this.loaduserinfo(data.userId, function (user) {
+                        this.showmsg(user, data);
+                        
+                        // 更新好友列表中的最後一條消息
+                        this.friends.forEach((item) => {
+                            if (item.ID == data.userId) {
+                                // 1文字 2表情包 3圖片 4音頻
+                                if (data.Media === 1) {
+                                    item.memo = data.Content;
+                                } else if (data.Media === 2) {
+                                    item.memo = data.Url;
+                                } else if (data.Media === 3) {
+                                    item.memo = "[語音]";
+                                } else if (data.Media === 4) {
+                                    item.memo = "[圖片]";
+                                }
+                            }
+                        });
+                    }.bind(this));
+                },
+                initwebsocket: function () {
+                    if (this.isConnecting) {
+                        console.log("WebSocket 正在連接中，跳過重連");
+                        return;
+                    }
+
+                    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                        console.error("WebSocket 重連次數超過限制，停止重連");
+                        mui.toast("網絡連接失敗，請刷新頁面重試");
+                        return;
+                    }
+
+                    this.isConnecting = true;
+                    this.reconnectAttempts++;
+
+                    try {
+                        var protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                        var url = protocol + location.host + "/chat/ws?userId=" + userId() + "&token=" + util.parseQuery("token");
+                        console.log("連接 WebSocket:", url);
+                        
+                        this.webSocket = new WebSocket(url);
+                        
+                        this.webSocket.onmessage = function (evt) {
+                            try {
+                                if (evt.data.indexOf("}") > -1) {
+                                    var data = JSON.parse(evt.data);
+                                    this.onmessage(data);
+                                }
+                            } catch (error) {
+                                console.error("WebSocket 訊息解析錯誤:", error);
+                            }
+                        }.bind(this);
+                        
+                        this.webSocket.onclose = function (evt) {
+                            console.log("WebSocket 連接已關閉，嘗試重新連接...");
+                            this.isConnecting = false;
+                            setTimeout(this.initwebsocket.bind(this), 5000);
+                        }.bind(this);
+                        
+                        this.webSocket.onerror = function (evt) {
+                            console.error("WebSocket 錯誤:", evt);
+                            this.isConnecting = false;
+                            setTimeout(this.initwebsocket.bind(this), 5000);
+                        }.bind(this);
+                        
+                        this.webSocket.onopen = function (evt) {
+                            console.log("WebSocket 連接成功");
+                            this.reconnectAttempts = 0;
+                            this.isConnecting = false;
+                            this.startHeartbeat();
+                            // 發送隊列中的消息
+                            this.processMessageQueue();
+                        }.bind(this);
+                    } catch (error) {
+                        console.error("WebSocket 初始化錯誤:", error);
+                        this.isConnecting = false;
+                        setTimeout(this.initwebsocket.bind(this), 5000);
+                    }
+                },
+                processMessageQueue: function() {
+                    if (this.webSocket && this.webSocket.readyState === 1) {
+                        while (this.messageQueue.length > 0) {
+                            const msg = this.messageQueue.shift();
+                            this.webSocket.send(JSON.stringify(msg));
+                        }
+                    }
+                },
+                sendMessageToServer: function (msg) {
+                    if (!msg || !msg.TargetId || msg.TargetId <= 0) {
+                        console.error("無效的消息或目標ID:", msg);
+                        return;
+                    }
+
+                    // 生成消息ID
+                    msg.id = new Date().getTime() + '_' + Math.random().toString(36).substr(2, 9);
+                    
+                    if (this.webSocket && this.webSocket.readyState === 1) {
+                        this.webSocket.send(JSON.stringify(msg));
+                    } else {
+                        console.log("WebSocket 未連接，消息加入隊列");
+                        this.messageQueue.push(msg);
+                        if (!this.isConnecting) {
+                            this.initwebsocket();
+                        }
+                    }
+                },
+                startHeartbeat: function () {
+                    if (this.heartbeatTimer) {
+                        clearInterval(this.heartbeatTimer);
+                    }
+                    
+                    // 每 60 秒發送一次心跳
+                    this.heartbeatTimer = setInterval(() => {
+                        if (this.webSocket && this.webSocket.readyState === 1) {
+                            this.heartbeat();
+                        }
+                    }, 60000);
+                },
+                heartbeat() {
+                    if (this.webSocket.readyState == 1) {  //失去连接 3
+                        var msg = this.createmsgcontext();
+                        msg.Media = -1;
+                        msg.Type = 3
+                        msg.Content = "心跳";
+                        //this.showmsg(userInfo(),msg);
+                        this.webSocket.send(JSON.stringify(msg))
+                    }
+
+                },
+                loadChatHistory: function (userId, targetId, page = 1, size = 20) {
+                    // 驗證參數
+                    if (!userId || !targetId) {
+                        console.error("用戶ID或目標ID不能為空", { userId, targetId });
+                        mui.toast("無法加載聊天歷史");
+                        return;
+                    }
+
+                    console.log("開始加載聊天歷史:", { 
+                        userId, 
+                        targetId, 
+                        page, 
+                        size,
+                        token: util.parseQuery("token")
+                    });
+
+                    // 顯示加載提示
+                    mui.toast("加載中...", { duration: 'short' });
+
+                    const url = `/chat/private/history?userId=${userId}&targetId=${targetId}&page=${page}&size=${size}`;
+                    console.log("請求URL:", url);
+
+                    fetch(url, {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${util.parseQuery("token")}`
+                        }
+                    })
+                    .then(response => {
+                        console.log("收到響應:", {
+                            status: response.status,
+                            statusText: response.statusText,
+                            headers: Object.fromEntries(response.headers.entries())
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.text();
+                    })
+                    .then(text => {
+                        console.log("響應文本:", text);
+                        try {
+                            // 檢查是否為空響應
+                            if (!text || text.trim() === '') {
+                                console.log("收到空響應，可能是沒有聊天記錄");
+                                return { code: 0, data: [] };
+                            }
+                            const data = JSON.parse(text);
+                            console.log("解析後的數據:", data);
+                            return data;
+                        } catch (e) {
+                            console.error("解析響應失敗:", e, "原始文本:", text);
+                            throw new Error("無效的響應格式");
+                        }
+                    })
+                    .then(res => {
+                        console.log("處理響應數據:", res);
+                        
+                        // 檢查響應格式
+                        if (!res || typeof res !== 'object') {
+                            console.warn("無效的響應格式");
+                            mui.toast("無效的響應格式");
+                            return;
+                        }
+
+                        // 處理成功響應
+                        if (res.code === 0) {
+                            const messages = res.data || [];
+                            if (Array.isArray(messages)) {
+                                console.log("開始處理消息列表:", messages.length);
+                                
+                                if (messages.length === 0) {
+                                    console.log("沒有聊天記錄");
+                                    mui.toast("暫無聊天記錄");
+                                    return;
+                                }
+
+                                messages.forEach((msg, index) => {
+                                    console.log(`處理第 ${index + 1} 條消息:`, msg);
+                                    // 判斷消息發送者
+                                    if (msg.userId == userId) {
+                                        // 自己發送的消息
+                                        this.showmsg(userInfo(), msg, true);
+                                    } else {
+                                        // 對方發送的消息
+                                        this.loaduserinfo(msg.userId, user => {
+                                            this.showmsg(user, msg, true);
+                                        });
+                                    }
+                                });
+                                console.log("消息處理完成");
+                            } else {
+                                console.warn("聊天歷史數據格式不正確:", messages);
+                                mui.toast("聊天歷史格式錯誤");
+                            }
+                        } else {
+                            const errorMsg = res.message || res.msg || "未知錯誤";
+                            console.error("加載聊天歷史失敗:", {
+                                code: res.code,
+                                message: errorMsg,
+                                data: res.data
+                            });
+                            mui.toast(errorMsg);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("加載聊天歷史失敗:", err);
+                        mui.toast("加載聊天歷史失敗: " + err.message);
+                    });
+                },
+                loadMoreHistory: function (userId, targetId) {
+                    this.currentPage = this.currentPage || 1;
+                    this.currentPage++;
+                    this.loadChatHistory(userId, targetId, this.currentPage);
+                },
+                loadfriends: function () {
+                    fetch("/user/searchFriends", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${util.parseQuery("token")}`
+                        },
+                        body: JSON.stringify({
+                            userId: userId()
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(res => {
+                        if (res.code === 0) {
+                            this.friends = res.rows || [];
+                            let usermap = {};
+                            for (let i in this.friends) {
+                                const k = "" + this.friends[i].id;
+                                usermap[k] = this.friends[i];
+                            }
+                            console.log("好友列表加載完成:", this.friends);
+                            console.log("用戶映射:", usermap);
+                            this.usermap = usermap;
+                        } else {
+                            console.error("加載好友列表失敗:", res.message);
+                        }
+                        })
+                        .catch(err => {
+                        console.error("加載好友列表請求失敗:", err);
+                        });
+                },
+                loadcommunitys: function () {
+                    fetch(`/contact/groups?userId=${userId()}`, {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${util.parseQuery("token")}`
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(res => {
+                        if (res.code === 0) {
+                            this.communitys = res.data || [];
+                        } else {
+                            console.error("加載群組列表失敗:", res.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("加載群組列表請求失敗:", err);
+                    });
+                },
+                addfriend: function () {
+                    //console.log("addfriend....")
+                    var that = this;
+                    mui.prompt('', '請輸入好友名稱', '加好友', ['取消', '確認'], function (e) {
+                        if (e.index == 1) {
+                            console.log('🎯 好友名稱：', e.value);
+                            // 判斷數字
+                            //if (isNaN(e.value) || e.value <= 0) {
+                            //    mui.toast('格式錯誤');
+                            //} else {
+                            //mui.toast(e.value);
+                            that._addfriend(e.value)
+                            //}
+                        } else {
+                            //mui.toast('您取消了入庫');
+                        }
+                    }, 'div');
+                    document.querySelector('.mui-popup-input input').type = 'text';
+
+                },
+                _addfriend: function (dstobj) {
+                    if (this.isDisable) {
+                        this.setTimeFlag();
+                        var that = this;
+                        
+                        fetch("/contact/addFriend", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${util.parseQuery("token")}`
+                            },
+                            body: JSON.stringify({
+                                userId: userId(),
+                                targetId: parseInt(dstobj)
+                            })
+                        })
+                            .then(response => response.json())
+                            .then(res => {
+                            if (res.code === 0) {
+                                    mui.toast("添加成功");
+                                    that.loadfriends();
+                                } else {
+                                mui.toast(res.message || "添加失敗");
+                                }
+                            })
+                            .catch(err => {
+                            console.error("添加好友請求失敗:", err);
+                            mui.toast("網絡錯誤");
+                            });
+                    }
+                },
+                // 各人資料修改顯示
+                setUserInfo: function () {
+                    this.win = "userinfo"
+                    //  console.log("createCom")
+                },
+                // 新建群顯示
+                createCom: function () {
+                    this.win = "community"
+                    // 初始化群聊數據
+                    this.com = {
+                        ownerId: userId(),
+                        icon: "",
+                        cate: "0",
+                        name: "",
+                        memo: "",
+                        size: "0",
+                        joinType: "0"
+                    }
+                },
+
+                // 新建群提交
+                createcommunity: function () {
+                    // 驗證表單
+                    if (!this.com.name || this.com.name.length < 2 || this.com.name.length > 20) {
+                        mui.toast("群名稱長度必須在2-20個字符之間");
+                        return;
+                    }
+                    
+                    if (!this.com.memo || this.com.memo.length > 200) {
+                        mui.toast("群介紹不能超過200字");
+                        return;
+                    }
+                    
+                    if (!this.com.icon) {
+                        mui.toast("請上傳群頭像");
+                        return;
+                    }
+
+                    this.com.ownerId = userId();
+                    
+                    fetch("/contact/create-group", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${util.parseQuery("token")}`
+                        },
+                        body: JSON.stringify(this.com)
+                    })
+                    .then(response => response.json())
+                    .then(res => {
+                        if (res.code === 0) {
+                            mui.toast("建群成功");
+                            this.loadcommunitys();
+                            this.goBack(); // 返回上一頁
+                        } else {
+                            mui.toast(res.message || "建群失敗");
+                        }
+                    })
+                    .catch(err => {
+                        console.error("創建群組請求失敗:", err);
+                        mui.toast("網絡錯誤");
+                    });
+                },
+                updateUserInfo() {
+                    //console.log("createcommunity")
+                    this.info.id = userId()
+                    util.post("/user/updateUser", this.info).then(res => {
+                        console.log(res)
+                        let userInfo = JSON.parse(sessionStorage.getItem('userinfo') || '{}');
+                        userInfo.Avatar = this.info.icon;
+                        userInfo.Name = this.info.name;
+                        sessionStorage.setItem('userinfo', JSON.stringify(userInfo))
+                        if (res.Code != 0) {
+                            mui.toast(res.message)
+                        } else {
+                            //location.replace("localhost:8081")
+                            //location.href = "/"
+                            mui.toast("修改成功")
+                            //goBack()
+                        }
+                    })
+                },
+
+
+
+                //回到聊天首页
+                goBack() {
+                    this.win = "main"
+                },
+
+                _joincomunity: function (dstobj) {
+                    if (this.isDisable) {
+                        this.setTimeFlag();
+                        var that = this;
+                        console.log(that);
+                        fetch("/contact/joinGroup", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${util.parseQuery("token")}`
+                            },
+                            body: JSON.stringify({
+                                comId: dstobj,
+                                userId: userId()
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(res => {
+                            if (res.code === 0) {
+                                mui.toast("加入成功");
+                                that.loadcommunitys();
+                            } else {
+                                mui.toast(res.message || "加入失敗");
+                            }
+                        })
+                        .catch(err => {
+                            console.error("加入群組請求失敗:", err);
+                            mui.toast("網絡錯誤");
+                        });
+                    }
+                },
+                joincom: function () {
+                    var that = this;
+                    mui.prompt('', '请输入群号或者群名称', '加群', ['取消', '确认'], function (e) {
+                        if (e.index == 1) {
+                            //    if (isNaN(e.value) || e.value <= 0) {
+                            //       mui.toast('格式错误');
+                            //   } else {
+                            //mui.toast(e.value);
+                            that._joincomunity(e.value)
+                            // }
+                        } else {
+                            //mui.toast('您取消了入库');
+                        }
+                    }, 'div');
+                    document.querySelector('.mui-popup-input input').type = 'text';
+                },
+                quit: function () {
+                    sessionStorage.removeItem("userid")
+                    sessionStorage.removeItem("userinfo")
+                    location.href = "/"
+                },
+                setTimeFlag() {
+                    this.isDisable = false;
+                    setTimeout(() => {
+                        this.isDisable = true;
+                    }, 100)
+                },
+                // 添加 emoji 選擇器
+                showEmojiPicker() {
+                    // 檢查是否已存在表情選擇器
+                    const existingPicker = document.querySelector('.emoji-picker');
+                    if (existingPicker) {
+                        document.body.removeChild(existingPicker);
+                        return;
+                    }
+
+                    var emojiContainer = document.createElement('div');
+                    emojiContainer.className = 'emoji-picker';
+                    emojiContainer.style.position = 'absolute';
+                    emojiContainer.style.bottom = '50px';
+                    emojiContainer.style.left = '0';
+                    emojiContainer.style.backgroundColor = '#fff';
+                    emojiContainer.style.border = '1px solid #ccc';
+                    emojiContainer.style.padding = '10px';
+                    emojiContainer.style.zIndex = '1000';
+                    emojiContainer.style.display = 'grid';
+                    emojiContainer.style.gridTemplateColumns = 'repeat(8, 1fr)';
+                    emojiContainer.style.gap = '5px';
+
+                    // 加載 emoji 列表
+                    var emojis = [];
+                    for (var i = 1; i <= 13; i++) {
+                        emojis.push(i + '.gif');
+                    }
+
+                    // 創建 emoji 按鈕
+                    emojis.forEach(function(emoji) {
+                        var emojiBtn = document.createElement('img');
+                        emojiBtn.src = '/web/asset/plugins/doutu/emoj/' + emoji;
+                        emojiBtn.style.width = '24px';
+                        emojiBtn.style.height = '24px';
+                        emojiBtn.style.cursor = 'pointer';
+                        emojiBtn.onclick = function() {
+                            app.sendpicmsg('/web/asset/plugins/doutu/emoj/' + emoji);
+                            document.body.removeChild(emojiContainer);
+                        };
+                        emojiContainer.appendChild(emojiBtn);
+                    });
+
+                    // 添加關閉按鈕
+                    var closeBtn = document.createElement('button');
+                    closeBtn.textContent = '關閉';
+                    closeBtn.style.gridColumn = '1 / -1';
+                    closeBtn.style.marginTop = '10px';
+                    closeBtn.onclick = function() {
+                        document.body.removeChild(emojiContainer);
+                    };
+                    emojiContainer.appendChild(closeBtn);
+
+                    document.body.appendChild(emojiContainer);
+                },
+                // 處理圖片加載錯誤
+                handleImageError: function(e) {
+                    console.error('圖片加載失敗：', e.target.src);
+                    e.target.src = '/web/asset/images/image-error.png';
+                    mui.toast('圖片加載失敗');
+                },
+                
+                // 預覽圖片
+                previewImage: function(url) {
+                    // 確保 URL 是完整的
+                    const fullUrl = url.startsWith('http') ? url : 
+                                  url.startsWith('/') ? url : 
+                                  '/' + url;
+                    
+                    // 創建預覽容器
+                    const previewContainer = document.createElement('div');
+                    previewContainer.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.9);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        z-index: 9999;
+                    `;
+                    
+                    // 創建圖片元素
+                    const img = document.createElement('img');
+                    img.src = fullUrl;
+                    img.style.cssText = `
+                        max-width: 90%;
+                        max-height: 90%;
+                        object-fit: contain;
+                    `;
+                    
+                    // 點擊關閉預覽
+                    previewContainer.onclick = function() {
+                        document.body.removeChild(previewContainer);
+                    };
+                    
+                    previewContainer.appendChild(img);
+                    document.body.appendChild(previewContainer);
+                },
+            },
+            watch: {
+                "win": function (n, o) {
+                    // console.log("watch",o,n)
+                    if (n != "main") {
+                        document.getElementById("menubar").style.display = "none";
+                    } else {
+                        document.getElementById("menubar").style.display = "block";
+                    }
+                }
+            }
+        }
+    )
+
+</script>
+{{end}}
