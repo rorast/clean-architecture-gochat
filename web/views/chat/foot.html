@@ -503,8 +503,8 @@
 
                     console.log("發送消息，上下文:", this.msgcontext);
                     
-                    var msg = this.createmsgcontext();
-                    msg.Content = txt;
+                        var msg = this.createmsgcontext();
+                        msg.Content = txt;
                     msg.Media = 1; // 文字類型
                     msg.TargetId = this.msgcontext.TargetId; // 確保設置目標ID
                     msg.Type = this.msgcontext.Type; // 確保設置消息類型
@@ -512,7 +512,7 @@
                     console.log("準備發送的消息:", msg);
                     
                     // 先顯示消息
-                    this.showmsg(userInfo(), msg);
+                            this.showmsg(userInfo(), msg);
                     
                     // 清空輸入框
                     this.txtmsg = "";
@@ -541,9 +541,9 @@
                         type: this.msgcontext.Type
                     });
 
-                    var msg = this.createmsgcontext();
+                        var msg = this.createmsgcontext();
                     msg.Url = url;
-                    msg.Media = 4;
+                        msg.Media = 4;
                     msg.TargetId = this.msgcontext.TargetId;
                     msg.Type = this.msgcontext.Type;
                     msg.id = new Date().getTime() + '_' + Math.random().toString(36).substr(2, 9);
@@ -553,7 +553,7 @@
                         fullImageUrl: window.location.origin + msg.Url
                     });
                     
-                    this.showmsg(userInfo(), msg);
+                            this.showmsg(userInfo(), msg);
                     
                     if (!this.processedMessages) {
                         this.processedMessages = {};
@@ -567,13 +567,13 @@
                     }, 1000);
                 },
                 sendaudiomsg: function (url, duration) {
-                    var msg = this.createmsgcontext();
+                        var msg = this.createmsgcontext();
                     msg.Url = url;
                     msg.Media = 3; // 語音類型
                     msg.Amount = duration;
                     
                     // 先顯示消息
-                    this.showmsg(userInfo(), msg);
+                            this.showmsg(userInfo(), msg);
                     
                     // 發送到服務器
                     this.sendMessageToServer(msg);
@@ -672,18 +672,18 @@
                                         }
 
                                         const translate = transform.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
-                                        if (translate && translate.length > 1) {
+                            if (translate && translate.length > 1) {
                                             const y = parseInt(translate[1]);
                                             if (y > 0 && this.isLoadMore == false) {
-                                                this.isLoadMore = true;
+                                    this.isLoadMore = true;
                                                 // 加載更多歷史消息
                                                 this.loadMoreHistory(this.msgcontext.userId, this.msgcontext.TargetId);
                                                 
-                                                setTimeout(() => {
-                                                    this.isLoadMore = false;
-                                                }, 300);
-                                            }
-                                        }
+                                        setTimeout(() => {
+                                            this.isLoadMore = false;
+                                        }, 300);
+                                }
+                            }
                                     });
                                 }
                             }
@@ -735,7 +735,7 @@
                                 }
                                 this.usermap[userid] = res.data;
                                 cb(res.data);
-                            } else {
+                    } else {
                                 console.error("獲取用戶信息失敗:", res.message);
                                 // 使用預設頭像
                                 const defaultUser = {
@@ -788,7 +788,7 @@
                     // 處理對方的消息
                     this.loaduserinfo(data.userId, function (user) {
                         this.showmsg(user, data);
-                        
+
                         // 更新好友列表中的最後一條消息
                         this.friends.forEach((item) => {
                             if (item.ID == data.userId) {
@@ -826,11 +826,11 @@
                         var url = protocol + location.host + "/chat/ws?userId=" + userId() + "&token=" + util.parseQuery("token");
                         console.log("連接 WebSocket:", url);
                         
-                        this.webSocket = new WebSocket(url);
-                        
-                        this.webSocket.onmessage = function (evt) {
+                    this.webSocket = new WebSocket(url);
+                    
+                    this.webSocket.onmessage = function (evt) {
                             try {
-                                if (evt.data.indexOf("}") > -1) {
+                        if (evt.data.indexOf("}") > -1) {
                                     var data = JSON.parse(evt.data);
                                     this.onmessage(data);
                                 }
@@ -845,7 +845,7 @@
                             setTimeout(this.initwebsocket.bind(this), 5000);
                         }.bind(this);
                         
-                        this.webSocket.onerror = function (evt) {
+                    this.webSocket.onerror = function (evt) {
                             console.error("WebSocket 錯誤:", evt);
                             this.isConnecting = false;
                             setTimeout(this.initwebsocket.bind(this), 5000);
