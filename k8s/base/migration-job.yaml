@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration
+spec:
+  template:
+    spec:
+      containers:
+      - name: migration
+        image: gcr.io/marine-embassy-455211-m1/gochat-migration:latest
+        env:
+        - name: DB_HOST
+          value: mariadb
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: gochat-secrets
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gochat-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          value: gochat
+      restartPolicy: OnFailure 

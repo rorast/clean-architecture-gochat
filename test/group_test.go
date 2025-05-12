@@ -14,7 +14,8 @@ import (
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:123456@tcp(127.0.0.1:3308)/newgochat?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{})
+	// db, err := gorm.Open(mysql.Open("root:123456@tcp(127.0.0.1:3308)/newgochat?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{}
+	db, err := gorm.Open(mysql.Open("root:cm9vdHBhc3N3b3Jk@tcp(mariadb:3306)/newgochat?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to connect database: %v", err)
 	}

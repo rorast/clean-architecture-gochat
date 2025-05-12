@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gochat
+  labels:
+    app: gochat
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gochat
+  template:
+    metadata:
+      labels:
+        app: gochat
+    spec:
+      containers:
+      - name: gochat
+        image: gcr.io/marine-embassy-455211-m1/gochat:latest
+        ports:
+        - containerPort: 8099
+        env:
+        # 原始配置（已註釋）
+        # - name: DB_HOST
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: gochat-config
+        #       key: DB_HOST
+        # - name: DB_PORT
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: gochat-config
+        #       key: DB_PORT
+        # - name: DB_NAME
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: gochat-config
+        #       key: DB_NAME
+        # - name: REDIS_HOST
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: gochat-config
+        #       key: REDIS_HOST
+        # - name: REDIS_PORT
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: gochat-config
+        #       key: REDIS_PORT
+        # - name: APP_ENV
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: gochat-config
+        #       key: APP_ENV
+        # - name: APP_PORT
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: gochat-config
+        #       key: APP_PORT
+
+        # 新的直接配置
+        - name: DB_HOST
+          value: mariadb
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: gochat-secrets
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gochat-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          value: gochat
+        - name: REDIS_HOST
+          value: redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: APP_ENV
+          value: production
+        - name: APP_PORT
+          value: "8099"
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8099
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8099
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3 

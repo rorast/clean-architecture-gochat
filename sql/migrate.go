@@ -15,7 +15,32 @@ import (
 )
 
 func main() {
-	db, err := gorm.Open(mysql.Open("root:123456@tcp(127.0.0.1:3308)/newgochat?charset=utf8mb4&parseTime=True&loc=Local"), &gorm.Config{})
+	// 從環境變數獲取資料庫連接資訊
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "mariadb"
+	}
+	dbPort := os.Getenv("DB_PORT")
+	if dbPort == "" {
+		dbPort = "3306"
+	}
+	dbUser := os.Getenv("DB_USER")
+	if dbUser == "" {
+		dbUser = "root"
+	}
+	dbPassword := os.Getenv("DB_PASSWORD")
+	if dbPassword == "" {
+		dbPassword = "rootpassword"
+	}
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = "newgochat"
+	}
+
+	// 構建資料庫連接字串
+	dsn := dbUser + ":" + dbPassword + "@tcp(" + dbHost + ":" + dbPort + ")/" + dbName + "?charset=utf8mb4&parseTime=True&loc=Local"
+
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("failed to connect database:", err)
 	}
