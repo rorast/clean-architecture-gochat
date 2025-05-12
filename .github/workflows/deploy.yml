@@ -2,9 +2,9 @@ name: Deploy to GKE
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 env:
   PROJECT_ID: marine-embassy-455211-m1
