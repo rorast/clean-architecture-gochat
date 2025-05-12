@@ -11,7 +11,7 @@ env:
   GKE_CLUSTER: gochat-cluster
   GKE_ZONE: asia-east1-a
   DEPLOYMENT_NAME: gochat
-  GCR_HOSTNAME: asia.gcr.io
+  GCR_HOSTNAME: gcr.io
 
 jobs:
   setup-build-deploy:
