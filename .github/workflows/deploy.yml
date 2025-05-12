@@ -33,6 +33,7 @@ jobs:
         gcloud auth configure-docker gcr.io --quiet
         gcloud config set project ${{ env.PROJECT_ID }}
         gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin gcr.io
+        docker-credential-gcr configure-docker --registries=gcr.io
 
     - name: Build and Push Application Image
       run: |
