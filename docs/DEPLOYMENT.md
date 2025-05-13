@@ -20,6 +20,51 @@ export PROJECT_ID=your-project-id
 export REGION=asia-east1
 ```
 
+## 集群管理
+
+### 1. 建立集群
+```bash
+# 建立 GKE 集群
+gcloud container clusters create gochat-cluster \
+  --zone asia-east1-a \
+  --machine-type e2-medium \
+  --num-nodes 1 \
+  --enable-network-policy
+```
+
+### 2. 刪除集群
+```bash
+# 刪除 GKE 集群
+gcloud container clusters delete gochat-cluster --zone asia-east1-a --quiet
+```
+
+### 3. 重建集群
+如果需要重建集群，請按照以下步驟：
+
+1. 刪除現有集群
+```bash
+gcloud container clusters delete gochat-cluster --zone asia-east1-a --quiet
+```
+
+2. 建立新集群
+```bash
+gcloud container clusters create gochat-cluster \
+  --zone asia-east1-a \
+  --machine-type e2-medium \
+  --num-nodes 1 \
+  --enable-network-policy
+```
+
+3. 重新部署應用
+```bash
+# 部署資料庫遷移
+kubectl apply -f k8s/base/migration-job.yaml
+
+# 部署應用程式
+kubectl apply -f k8s/base/deployment.yaml
+kubectl apply -f k8s/base/service.yaml
+```
+
 ## 自動化部署 (GitHub Actions)
 
 ### 1. 設定 GitHub Secrets
