@@ -48,6 +48,11 @@ const (
 	ErrWSDisconnected  ErrorCode = 7001
 	ErrWSMessageFailed ErrorCode = 7002
 
+	// Redis錯誤 (8xxx)
+	ErrRedisConnectionFailed ErrorCode = 8000
+	ErrRedisOperationFailed  ErrorCode = 8001
+	ErrRedisCacheMiss        ErrorCode = 8002
+
 	// 系統錯誤 (9xxx)
 	ErrInternalServer     ErrorCode = 9000
 	ErrDatabaseError      ErrorCode = 9001
@@ -94,6 +99,10 @@ var ErrorCodeDetails = map[ErrorCode]struct {
 	ErrWSConnectFailed: {"WS_CONNECT_FAILED", "WebSocket連接失敗"},
 	ErrWSDisconnected:  {"WS_DISCONNECTED", "WebSocket連接中斷"},
 	ErrWSMessageFailed: {"WS_MESSAGE_FAILED", "WebSocket消息發送失敗"},
+
+	ErrRedisConnectionFailed: {"REDIS_CONNECTION_FAILED", "Redis連接失敗"},
+	ErrRedisOperationFailed:  {"REDIS_OPERATION_FAILED", "Redis操作失敗"},
+	ErrRedisCacheMiss:        {"REDIS_CACHE_MISS", "Redis緩存未命中"},
 
 	ErrInternalServer:     {"INTERNAL_SERVER_ERROR", "服務器內部錯誤"},
 	ErrDatabaseError:      {"DATABASE_ERROR", "數據庫錯誤"},

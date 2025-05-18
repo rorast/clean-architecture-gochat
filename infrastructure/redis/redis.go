@@ -1,7 +1,9 @@
 package redis
 
 import (
+	"clean-architecture-gochat/internal/common/enum"
 	"clean-architecture-gochat/internal/config"
+	appErrors "clean-architecture-gochat/internal/errors"
 	"context"
 	"log"
 	"sync"
@@ -14,7 +16,10 @@ var (
 	once   sync.Once
 )
 
-func Connect() *redis.Client {
+// Connect 連接到Redis並返回客戶端
+func Connect() (*redis.Client, error) {
+	var err error
+
 	once.Do(func() {
 		client = redis.NewClient(&redis.Options{
 			Addr:         config.Config.Redis.Addr,
@@ -24,18 +29,24 @@ func Connect() *redis.Client {
 			MinIdleConns: config.Config.Redis.MinIdleConns,
 		})
 
-		if err := client.Ping(context.Background()).Err(); err != nil {
-			log.Fatalf("Redis 連接失敗: %v", err)
+		if pingErr := client.Ping(context.Background()).Err(); pingErr != nil {
+			err = appErrors.Wrap(pingErr, enum.ErrRedisConnectionFailed, map[string]interface{}{
+				"addr":     config.Config.Redis.Addr,
+				"database": config.Config.Redis.DB,
+			})
+			log.Printf("Redis連接失敗: %v", err)
+			return
 		}
-		log.Println("Redis 連接成功")
+		log.Println("Redis連接成功")
 	})
 
-	return client
+	return client, err
 }
 
-func GetRedis() *redis.Client {
+// GetRedis 獲取已初始化的Redis客戶端
+func GetRedis() (*redis.Client, error) {
 	if client == nil {
-		log.Fatal("Redis 尚未初始化")
+		return nil, appErrors.New(enum.ErrRedisConnectionFailed, "Redis尚未初始化")
 	}
-	return client
+	return client, nil
 }
