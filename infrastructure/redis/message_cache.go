@@ -8,23 +8,42 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-// EnhancedRedisCacheRepository 增強版Redis緩存儲存庫，使用新的錯誤處理系統
-type EnhancedRedisCacheRepository struct {
+const (
+	// 訊息快取的 key 格式
+	messageKeyFormat  = "chat:msg:%d:%d"  // chat:msg:fromUserId:toUserId
+	roomKeyFormat     = "chat:room:%d"    // chat:room:roomId
+	userMsgListFormat = "chat:msglist:%d" // chat:msglist:userId
+	messagePattern    = "chat:msg:*:*"    // 用於搜尋所有私人訊息
+	roomPattern       = "chat:room:*"     // 用於搜尋所有群組訊息
+	userListPattern   = "chat:msglist:*"  // 用於搜尋所有用戶列表
+
+	// 快取過期時間
+	messageTTL     = 24 * time.Hour // 單條訊息快取 24 小時
+	roomTTL        = 48 * time.Hour // 群組訊息快取 48 小時
+	messageListTTL = 72 * time.Hour // 訊息列表快取 72 小時
+
+	// 訊息列表的最大長度
+	maxMessageListLength = 100
+)
+
+// RedisCacheRepository Redis緩存儲存庫，使用新的錯誤處理系統
+type RedisCacheRepository struct {
 	client *redis.Client
 }
 
-// NewEnhancedMessageCacheRepository 創建新的增強版訊息快取儲存庫
-func NewEnhancedMessageCacheRepository(client *redis.Client) cache.MessageCacheRepository {
-	return &EnhancedRedisCacheRepository{
+// NewMessageCacheRepository 創建新的訊息快取儲存庫
+func NewMessageCacheRepository(client *redis.Client) cache.MessageCacheRepository {
+	return &RedisCacheRepository{
 		client: client,
 	}
 }
 
-func (r *EnhancedRedisCacheRepository) StorePrivateMessage(ctx context.Context, message *entities.Message) error {
+func (r *RedisCacheRepository) StorePrivateMessage(ctx context.Context, message *entities.Message) error {
 	key := fmt.Sprintf(messageKeyFormat, message.UserId, message.TargetId)
 
 	// 序列化消息
@@ -69,7 +88,7 @@ func (r *EnhancedRedisCacheRepository) StorePrivateMessage(ctx context.Context, 
 	return nil
 }
 
-func (r *EnhancedRedisCacheRepository) StoreGroupMessage(ctx context.Context, message *entities.Message) error {
+func (r *RedisCacheRepository) StoreGroupMessage(ctx context.Context, message *entities.Message) error {
 	key := fmt.Sprintf(roomKeyFormat, message.RoomID)
 
 	// 序列化消息
@@ -113,7 +132,7 @@ func (r *EnhancedRedisCacheRepository) StoreGroupMessage(ctx context.Context, me
 	return nil
 }
 
-func (r *EnhancedRedisCacheRepository) GetPrivateMessages(ctx context.Context, fromUserID, toUserID uint) ([]*entities.Message, error) {
+func (r *RedisCacheRepository) GetPrivateMessages(ctx context.Context, fromUserID, toUserID uint) ([]*entities.Message, error) {
 	key := fmt.Sprintf(messageKeyFormat, fromUserID, toUserID)
 
 	// 獲取所有消息
@@ -144,7 +163,7 @@ func (r *EnhancedRedisCacheRepository) GetPrivateMessages(ctx context.Context, f
 	return messages, nil
 }
 
-func (r *EnhancedRedisCacheRepository) GetGroupMessages(ctx context.Context, roomID uint) ([]*entities.Message, error) {
+func (r *RedisCacheRepository) GetGroupMessages(ctx context.Context, roomID uint) ([]*entities.Message, error) {
 	key := fmt.Sprintf(roomKeyFormat, roomID)
 
 	// 獲取所有消息
@@ -174,7 +193,7 @@ func (r *EnhancedRedisCacheRepository) GetGroupMessages(ctx context.Context, roo
 	return messages, nil
 }
 
-func (r *EnhancedRedisCacheRepository) GetUserMessageList(ctx context.Context, userID uint) ([]*entities.Message, error) {
+func (r *RedisCacheRepository) GetUserMessageList(ctx context.Context, userID uint) ([]*entities.Message, error) {
 	pattern := fmt.Sprintf("chat:msg:%d:*", userID)
 	keys, err := r.client.Keys(ctx, pattern).Result()
 	if err != nil {
@@ -208,7 +227,7 @@ func (r *EnhancedRedisCacheRepository) GetUserMessageList(ctx context.Context, u
 	return allMessages, nil
 }
 
-func (r *EnhancedRedisCacheRepository) CleanExpiredMessages(ctx context.Context) error {
+func (r *RedisCacheRepository) CleanExpiredMessages(ctx context.Context) error {
 	// 清理私人訊息
 	if err := r.cleanExpiredKeys(ctx, messagePattern); err != nil {
 		return err
@@ -222,7 +241,7 @@ func (r *EnhancedRedisCacheRepository) CleanExpiredMessages(ctx context.Context)
 	return nil
 }
 
-func (r *EnhancedRedisCacheRepository) cleanExpiredKeys(ctx context.Context, pattern string) error {
+func (r *RedisCacheRepository) cleanExpiredKeys(ctx context.Context, pattern string) error {
 	keys, err := r.client.Keys(ctx, pattern).Result()
 	if err != nil {
 		return appErrors.Wrap(err, enum.ErrRedisOperationFailed, map[string]interface{}{

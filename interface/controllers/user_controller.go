@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"clean-architecture-gochat/internal/domain/entities"
+	"clean-architecture-gochat/internal/usecases/user"
 	"clean-architecture-gochat/pkg/response"
 	"clean-architecture-gochat/pkg/utils"
-	"clean-architecture-gochat/usecases/user"
 	"encoding/json"
 	"fmt"
 	"io"

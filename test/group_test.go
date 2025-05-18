@@ -3,7 +3,7 @@ package test
 import (
 	"clean-architecture-gochat/internal/domain/entities"
 	"clean-architecture-gochat/internal/domain/repositories"
-	"clean-architecture-gochat/usecases/chat"
+	"clean-architecture-gochat/internal/usecases/chat"
 	"context"
 	"testing"
 	"time"

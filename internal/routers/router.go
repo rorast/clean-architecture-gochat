@@ -5,9 +5,9 @@ import (
 	"clean-architecture-gochat/infrastructure/mysql"
 	"clean-architecture-gochat/interface/controllers"
 	"clean-architecture-gochat/internal/domain/repositories"
-	"clean-architecture-gochat/usecases/chat"
-	"clean-architecture-gochat/usecases/user"
-	"clean-architecture-gochat/usecases/websocket"
+	"clean-architecture-gochat/internal/usecases/chat"
+	"clean-architecture-gochat/internal/usecases/user"
+	"clean-architecture-gochat/internal/usecases/websocket"
 
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"

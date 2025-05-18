@@ -34,7 +34,7 @@ func TestEnhancedMessageCache_Basic(t *testing.T) {
 	client, cleanup := setupTestEnhancedRedis(t)
 	defer cleanup()
 
-	cache := redis.NewEnhancedMessageCacheRepository(client)
+	cache := redis.NewMessageCacheRepository(client)
 	ctx := context.Background()
 
 	// 準備測試數據
@@ -64,7 +64,7 @@ func TestEnhancedMessageCache_GroupMessages(t *testing.T) {
 	client, cleanup := setupTestEnhancedRedis(t)
 	defer cleanup()
 
-	cache := redis.NewEnhancedMessageCacheRepository(client)
+	cache := redis.NewMessageCacheRepository(client)
 	ctx := context.Background()
 
 	// 準備測試數據
@@ -106,7 +106,7 @@ func TestEnhancedMessageCache_ErrorHandling(t *testing.T) {
 	})
 	mr.Close() // 立即關閉 miniredis 服務器，導致後續操作失敗
 
-	brokenCache := redis.NewEnhancedMessageCacheRepository(brokenClient)
+	brokenCache := redis.NewMessageCacheRepository(brokenClient)
 
 	message := &entities.Message{
 		ID:        1,
@@ -145,7 +145,7 @@ func TestEnhancedMessageCache_ConnectionError(t *testing.T) {
 		Addr: "nonexistent:6379", // 不存在的地址
 	})
 
-	cache := redis.NewEnhancedMessageCacheRepository(client)
+	cache := redis.NewMessageCacheRepository(client)
 	ctx := context.Background()
 
 	message := &entities.Message{

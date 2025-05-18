@@ -3,8 +3,8 @@ package controllers
 import (
 	"clean-architecture-gochat/internal/domain/entities"
 	"clean-architecture-gochat/internal/domain/repositories"
-	"clean-architecture-gochat/usecases/chat"
-	ws "clean-architecture-gochat/usecases/websocket"
+	"clean-architecture-gochat/internal/usecases/chat"
+	ws "clean-architecture-gochat/internal/usecases/websocket"
 
 	"bytes"
 	"io"
