@@ -1,9 +1,9 @@
 mysql:
-  # dns: root:123456@tcp(127.0.0.1:3308)/newgochat?charset=utf8mb4&parseTime=True&loc=Local
-  dns: gochat:gochat123@tcp(mariadb:3306)/gochat?charset=utf8mb4&parseTime=True&loc=Local
+  dns: gochat:gochat123@tcp(mysql:3306)/gochat?charset=utf8mb4&parseTime=True&loc=Local
+  # dns: gochat:gochat123@tcp(mariadb:3306)/gochat?charset=utf8mb4&parseTime=True&loc=Local
 redis:
-  addr: "127.0.0.1:6378"
-  password: "123456" # 空白或123456
+  addr: "redis:6379"
+  password: "" # 空白或123456
   DB: 0
   poolSize: 30
   minIdleConn: 30

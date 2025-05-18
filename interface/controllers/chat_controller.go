@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"clean-architecture-gochat/internal/domain/entities"
+	"clean-architecture-gochat/internal/domain/repositories"
 	"clean-architecture-gochat/usecases/chat"
 	ws "clean-architecture-gochat/usecases/websocket"
 
@@ -10,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	gorilla "github.com/gorilla/websocket"
@@ -19,17 +21,20 @@ type ChatController struct {
 	privateChatService chat.Service
 	groupChatService   chat.GroupChatService
 	connectionService  ws.ConnectionService
+	messageService     repositories.MessageService
 }
 
 func NewChatController(
 	privateChatService chat.Service,
 	groupChatService chat.GroupChatService,
 	connectionService ws.ConnectionService,
+	messageService repositories.MessageService,
 ) *ChatController {
 	return &ChatController{
 		privateChatService: privateChatService,
 		groupChatService:   groupChatService,
 		connectionService:  connectionService,
+		messageService:     messageService,
 	}
 }
 
@@ -76,12 +81,57 @@ func (cc *ChatController) HandleWebSocket(c *gin.Context) {
 
 // 發送私人訊息
 func (cc *ChatController) SendPrivateMessage(c *gin.Context) {
-	// 處理發送私人訊息的邏輯
+	var req struct {
+		FromUserID uint   `json:"fromUserId"`
+		ToUserID   uint   `json:"toUserId"`
+		Content    string `json:"content"`
+		Type       int    `json:"type"`
+		Media      int    `json:"media"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": -1, "message": "無效的請求格式"})
+		return
+	}
+
+	message := &entities.Message{
+		UserId:    req.FromUserID,
+		TargetId:  req.ToUserID,
+		Content:   req.Content,
+		Type:      entities.MessageType(req.Type),
+		Media:     entities.MediaType(req.Media),
+		CreatedAt: time.Now(),
+	}
+
+	if err := cc.messageService.SendPrivateMessage(c.Request.Context(), message); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "訊息發送成功"})
 }
 
 // 獲取私人聊天歷史
 func (cc *ChatController) GetPrivateHistory(c *gin.Context) {
-	// 獲取私人聊天歷史
+	fromUserID, err := strconv.ParseUint(c.Query("fromUserId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": -1, "message": "無效的發送者ID"})
+		return
+	}
+
+	toUserID, err := strconv.ParseUint(c.Query("toUserId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": -1, "message": "無效的接收者ID"})
+		return
+	}
+
+	messages, err := cc.messageService.GetPrivateHistory(c.Request.Context(), uint(fromUserID), uint(toUserID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "獲取聊天歷史成功", "data": messages})
 }
 
 // 創建群組
@@ -300,12 +350,51 @@ func (cc *ChatController) RemoveGroupMember(c *gin.Context) {
 
 // 發送群組消息
 func (cc *ChatController) SendGroupMessage(c *gin.Context) {
-	// 處理發送群組訊息的邏輯
+	var req struct {
+		UserID  uint   `json:"userId"`
+		RoomID  uint   `json:"roomId"`
+		Content string `json:"content"`
+		Type    int    `json:"type"`
+		Media   int    `json:"media"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": -1, "message": "無效的請求格式"})
+		return
+	}
+
+	message := &entities.Message{
+		UserId:    req.UserID,
+		RoomID:    req.RoomID,
+		Content:   req.Content,
+		Type:      entities.MessageType(req.Type),
+		Media:     entities.MediaType(req.Media),
+		CreatedAt: time.Now(),
+	}
+
+	if err := cc.messageService.SendGroupMessage(c.Request.Context(), message); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "群組訊息發送成功"})
 }
 
 // 獲取群組聊天歷史
 func (cc *ChatController) GetGroupHistory(c *gin.Context) {
-	// 獲取群組聊天歷史
+	roomID, err := strconv.ParseUint(c.Query("roomId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": -1, "message": "無效的群組ID"})
+		return
+	}
+
+	messages, err := cc.messageService.GetGroupHistory(c.Request.Context(), uint(roomID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "獲取群組聊天歷史成功", "data": messages})
 }
 
 // CreateCustomGroup 處理前端自定義格式的群組創建請求
@@ -437,4 +526,21 @@ func (cc *ChatController) JoinGroup(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "加入群組成功"})
+}
+
+// GetRecentMessages 獲取最近的訊息列表
+func (cc *ChatController) GetRecentMessages(c *gin.Context) {
+	userID, err := strconv.ParseUint(c.Query("userId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": -1, "message": "無效的用戶ID"})
+		return
+	}
+
+	messages, err := cc.messageService.GetRecentMessages(c.Request.Context(), uint(userID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": -1, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "獲取最近訊息成功", "data": messages})
 }

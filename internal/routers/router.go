@@ -41,7 +41,8 @@ func SetupRouter() *gin.Engine {
 	privateChatService := chat.NewPrivateChatService(messageRepo)
 	groupChatService := chat.NewGroupChatService(groupRepo, messageRepo)
 	connectionService := websocket.NewConnectionService()
-	chatController := controllers.NewChatController(privateChatService, groupChatService, connectionService)
+	messageService := chat.NewMessageService(messageRepo)
+	chatController := controllers.NewChatController(privateChatService, groupChatService, connectionService, messageService)
 
 	// 首頁相關路由
 	r.GET("/", indexController.GetIndex)

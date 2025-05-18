@@ -1,0 +1,274 @@
+data "google_client_config" "default" {}
+
+# MariaDB 部署
+resource "kubernetes_deployment" "mariadb" {
+  metadata {
+    name = "mariadb"
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "mariadb"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "mariadb"
+        }
+      }
+
+      spec {
+        container {
+          image = "mariadb:10.6"
+          name  = "mariadb"
+
+          env {
+            name  = "MYSQL_ROOT_PASSWORD"
+            value = "your-root-password"
+          }
+
+          env {
+            name  = "MYSQL_DATABASE"
+            value = "gochat"
+          }
+
+          port {
+            container_port = 3306
+          }
+
+          volume_mount {
+            name       = "mariadb-data"
+            mount_path = "/var/lib/mysql"
+          }
+        }
+
+        volume {
+          name = "mariadb-data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.mariadb_pvc.metadata[0].name
+          }
+        }
+      }
+    }
+  }
+}
+
+# MariaDB PVC
+resource "kubernetes_persistent_volume_claim" "mariadb_pvc" {
+  metadata {
+    name = "mariadb-pvc"
+    namespace = "default"
+  }
+
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    storage_class_name = "standard"
+    resources {
+      requests = {
+        storage = "10Gi"
+      }
+    }
+  }
+
+  wait_until_bound = false
+}
+
+# MariaDB 服務
+resource "kubernetes_service" "mariadb" {
+  metadata {
+    name = "mariadb"
+  }
+
+  spec {
+    selector = {
+      app = "mariadb"
+    }
+
+    port {
+      port        = 3306
+      target_port = 3306
+    }
+  }
+}
+
+# Redis 部署
+resource "kubernetes_deployment" "redis" {
+  metadata {
+    name = "redis"
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "redis"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "redis"
+        }
+      }
+
+      spec {
+        container {
+          image = "redis:6.2"
+          name  = "redis"
+
+          port {
+            container_port = 6379
+          }
+
+          volume_mount {
+            name       = "redis-data"
+            mount_path = "/data"
+          }
+        }
+
+        volume {
+          name = "redis-data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.redis_pvc.metadata[0].name
+          }
+        }
+      }
+    }
+  }
+}
+
+# Redis PVC
+resource "kubernetes_persistent_volume_claim" "redis_pvc" {
+  metadata {
+    name = "redis-pvc"
+    namespace = "default"
+  }
+
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    storage_class_name = "standard"
+    resources {
+      requests = {
+        storage = "5Gi"
+      }
+    }
+  }
+
+  wait_until_bound = false
+}
+
+# Redis 服務
+resource "kubernetes_service" "redis" {
+  metadata {
+    name = "redis"
+  }
+
+  spec {
+    selector = {
+      app = "redis"
+    }
+
+    port {
+      port        = 6379
+      target_port = 6379
+    }
+  }
+}
+
+# GoChat 應用程式部署
+resource "kubernetes_deployment" "gochat" {
+  metadata {
+    name = "gochat"
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "gochat"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "gochat"
+        }
+      }
+
+      spec {
+        container {
+          image = "asia.gcr.io/${var.project_id}/gochat:latest"
+          name  = "gochat"
+
+          env {
+            name  = "DB_HOST"
+            value = "mariadb"
+          }
+
+          env {
+            name  = "DB_PORT"
+            value = "3306"
+          }
+
+          env {
+            name  = "DB_USER"
+            value = "root"
+          }
+
+          env {
+            name  = "DB_PASSWORD"
+            value = "your-root-password"
+          }
+
+          env {
+            name  = "DB_NAME"
+            value = "gochat"
+          }
+
+          env {
+            name  = "REDIS_HOST"
+            value = "redis"
+          }
+
+          env {
+            name  = "REDIS_PORT"
+            value = "6379"
+          }
+
+          port {
+            container_port = 8080
+          }
+        }
+      }
+    }
+  }
+}
+
+# GoChat 服務
+resource "kubernetes_service" "gochat" {
+  metadata {
+    name = "gochat"
+  }
+
+  spec {
+    selector = {
+      app = "gochat"
+    }
+
+    port {
+      port        = 80
+      target_port = 8080
+    }
+
+    type = "LoadBalancer"
+  }
+} 

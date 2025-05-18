@@ -15,6 +15,6 @@ func main() {
 	//gin.SetMode(gin.ReleaseMode)
 	r := routers.SetupRouter()
 
-	log.Println("Starting server on :8088")
-	r.Run(":8099")
+	log.Println("Starting server on :8080")
+	r.Run(":8080")
 }

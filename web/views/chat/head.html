@@ -66,6 +66,81 @@
     text-decoration: none;
     -webkit-font-smoothing: antialiased;
 }
+
+/* 圖片容器樣式 */
+.image-container {
+    position: relative;
+    min-width: 50px;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 5px;
+}
+
+.image-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+    font-size: 14px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.image-error {
+    color: #f44336;
+    font-size: 12px;
+    margin-top: 5px;
+    text-align: center;
+}
+
+/* 文本回退樣式 */
+.text-fallback {
+    padding: 8px;
+    font-size: 16px;
+    color: #333;
+    word-break: break-word;
+    max-width: 200px;
+}
+
+/* 修正.content>img.pic樣式 */
+.content img.pic {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block;
+    margin: 0 auto;
+}
+
+.content img.pic:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 清除可能的浮動問題 */
+.content::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.pic {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pic:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
 </style>
 <script src="/web/asset/plugins/mui/js/mui.js" ></script>
 <script src="/web/asset/js/vue.min.js" ></script>

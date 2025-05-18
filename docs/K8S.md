@@ -134,4 +134,85 @@ kubectl autoscale deployment gochat --min=2 --max=5 --cpu-percent=80
 4. 監控：
    - 定期檢查 Pod 狀態
    - 監控資源使用情況
-   - 查看應用程式日誌 
+   - 查看應用程式日誌
+
+## GKE 叢集管理
+
+### 建立叢集
+```bash
+# 建立 GKE 叢集
+gcloud container clusters create gochat-cluster \
+  --zone asia-east1-a \
+  --machine-type e2-medium \
+  --num-nodes 1 \
+  --enable-network-policy
+
+# 參數說明：
+# --zone: GCP 區域，建議選擇離用戶最近的區域
+# --machine-type: 節點機型，e2-medium 提供 2 vCPU 和 4GB 記憶體
+# --num-nodes: 節點數量，建議至少 1 個節點
+# --enable-network-policy: 啟用網路策略，提供更好的網路安全性
+```
+
+### 升級叢集
+```bash
+# 升級節點池機型（例如：從 e2-medium 升級到 e2-standard-4）
+gcloud container node-pools update default-pool \
+  --cluster=gochat-cluster \
+  --zone=asia-east1-a \
+  --machine-type=e2-standard-4
+
+# 參數說明：
+# --cluster: 叢集名稱
+# --zone: GCP 區域
+# --machine-type: 新的節點機型，e2-standard-4 提供 4 vCPU 和 16GB 記憶體
+
+# 其他常用機型：
+# - e2-small: 2 vCPU, 2GB 記憶體
+# - e2-medium: 2 vCPU, 4GB 記憶體
+# - e2-standard-2: 2 vCPU, 8GB 記憶體
+# - e2-standard-4: 4 vCPU, 16GB 記憶體
+# - e2-standard-8: 8 vCPU, 32GB 記憶體
+```
+
+### 刪除叢集
+```bash
+# 刪除 GKE 叢集
+gcloud container clusters delete gochat-cluster --zone asia-east1-a --quiet
+
+# 參數說明：
+# --zone: GCP 區域
+# --quiet: 不提示確認，直接刪除
+
+# 注意事項：
+# 1. 刪除叢集前請確保：
+#    - 已備份重要資料
+#    - 已確認沒有其他服務依賴此叢集
+# 2. 刪除叢集會同時刪除：
+#    - 所有節點
+#    - 所有 Pod
+#    - 所有服務
+#    - 所有配置
+```
+
+### 叢集管理常用指令
+```bash
+# 列出所有叢集
+gcloud container clusters list
+
+# 獲取叢集憑證
+gcloud container clusters get-credentials gochat-cluster --zone asia-east1-a
+
+# 查看叢集詳細資訊
+gcloud container clusters describe gochat-cluster --zone asia-east1-a
+
+# 調整節點數量
+gcloud container clusters resize gochat-cluster \
+  --zone asia-east1-a \
+  --num-nodes=2
+
+# 查看節點池資訊
+gcloud container node-pools list \
+  --cluster=gochat-cluster \
+  --zone=asia-east1-a
+``` 

@@ -49,7 +49,7 @@ func (r *messageRepository) FindMessagesBetweenUsers(ctx context.Context, userID
 	var messages []*entities.Message
 	err := r.db.WithContext(ctx).
 		Where("(user_id = ? AND target_id = ?) OR (user_id = ? AND target_id = ?)", userID, targetID, targetID, userID).
-		Order("create_time ASC").
+		Order("created_at ASC").
 		Find(&messages).Error
 	return messages, err
 }
